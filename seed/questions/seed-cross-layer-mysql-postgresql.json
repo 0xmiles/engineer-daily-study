@@ -1,0 +1,100 @@
+{
+  "id": "seed-cross-layer-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "cross-layer",
+  "topic": "mysql-postgresql",
+  "difficulty": "middle",
+  "title": "COMMIT 응답을 받은 데이터는 어디까지 안전한가",
+  "situation": "애플리케이션이 트랜잭션을 `COMMIT` 하고 성공 응답을 받으면, 그 직후 DB 서버 프로세스가 죽거나 서버 전원이 꺼져도 데이터가 남아 있기를 기대합니다. 이 보장은 DB 엔진의 로그, 운영체제의 페이지 캐시와 `fsync`, 저장 장치, 그리고 복제까지 여러 계층이 함께 만듭니다.\n\nMySQL 8.0(InnoDB, 바이너리 로그 사용)과 PostgreSQL을 기준으로, `COMMIT` 이 내구성을 얻는 경로를 계층을 따라 설명하세요.",
+  "requirements": [
+    "COMMIT 성공 응답이 나가기 전에 무엇이 어느 계층까지 기록되어야 하는지, 변경된 데이터 페이지는 언제 디스크에 쓰이는지와 함께 설명하세요.",
+    "MySQL이 redo log와 binlog 두 로그를 함께 쓸 때 두 로그의 내용이 어긋나지 않게 하는 방법과, 커밋마다 fsync 하는 비용을 줄이는 방법을 설명하세요.",
+    "로그 기록 설정을 완화하거나 비동기 복제로 장애 조치를 할 때 어떤 장애에서 어떤 데이터가 사라질 수 있는지 쓰세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "redo log와 WAL 선기록 후 커밋 응답",
+    "fsync와 운영체제 페이지 캐시, 체크포인트",
+    "redo log와 binlog의 내부 2단계 커밋과 그룹 커밋",
+    "내구성 설정 완화와 비동기 복제의 데이터 유실 범위"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "로그 선기록과 fsync",
+        "explanation": "커밋 응답 전에 변경 내용을 담은 로그(InnoDB redo log, PostgreSQL WAL)가 로그 버퍼에서 파일로 쓰이고 `fsync` 로 운영체제 페이지 캐시를 넘어 저장 장치까지 내려가야 한다. `write` 만으로는 운영체제 캐시에 머물러 전원이 꺼지면 사라진다는 점을 구분해야 한다."
+      },
+      {
+        "point": "데이터 페이지는 나중에",
+        "explanation": "변경된 데이터 페이지는 커밋 시점에 쓰지 않고 버퍼 풀이나 공유 버퍼에 남았다가 체크포인트나 백그라운드 작업이 나중에 쓴다. 장애 후에는 마지막 체크포인트 이후의 로그를 재실행해 복구한다는 점을 설명해야 한다."
+      },
+      {
+        "point": "redo log와 binlog의 일관성",
+        "explanation": "MySQL은 두 로그 사이에 내부 2단계 커밋을 쓴다. InnoDB가 redo log에 준비 상태를 기록하고, binlog를 기록·동기화한 뒤, InnoDB 커밋을 완료한다. 장애 복구 때 준비 상태 트랜잭션은 binlog에 있으면 커밋, 없으면 롤백하므로 원본과 복제본의 내용이 어긋나지 않는다는 점을 써야 한다."
+      },
+      {
+        "point": "설정 완화와 복제의 유실 범위",
+        "explanation": "`innodb_flush_log_at_trx_commit=2` 는 커밋마다 운영체제까지만 쓰고 약 1초마다 fsync 하므로 MySQL 프로세스만 죽으면 남지만 운영체제나 전원 장애에서는 최근 커밋이 사라질 수 있다. `0` 은 프로세스 장애에도 최근 커밋이 사라질 수 있다. PostgreSQL `synchronous_commit=off` 도 최근 커밋을 잃을 수 있지만 데이터 손상은 없다. 비동기 복제에서는 원본에 커밋되었지만 복제본에 전달되지 않은 트랜잭션이 장애 조치 후 사라진다. 이 중 설정 완화 하나와 복제 하나를 정확히 쓰면 충족이다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "그룹 커밋",
+        "explanation": "동시에 커밋하는 여러 트랜잭션의 로그를 한 번의 fsync로 묶는다. MySQL은 binlog 그룹 커밋이, PostgreSQL은 한 번의 WAL 플러시가 그 지점까지의 다른 커밋도 함께 내구화하는 구조와 `commit_delay` 설정이 이 역할을 한다."
+      },
+      {
+        "point": "찢긴 페이지 방지",
+        "explanation": "데이터 페이지를 쓰다 전원이 꺼지면 페이지 일부만 바뀔 수 있어, InnoDB는 doublewrite buffer, PostgreSQL은 체크포인트 이후 첫 변경 때 페이지 전체를 WAL에 남기는 full page write로 대비한다."
+      },
+      {
+        "point": "동기 복제 선택지",
+        "explanation": "MySQL 반동기 복제의 `AFTER_SYNC` 대기 지점이나 PostgreSQL `synchronous_standby_names` 와 `synchronous_commit=remote_write` 같은 값으로 복제본 수신을 커밋 응답 조건에 넣을 수 있다."
+      },
+      {
+        "point": "저장 장치의 쓰기 캐시",
+        "explanation": "전원 보호가 없는 장치 쓰기 캐시가 플러시 요청을 무시하면 fsync가 성공해도 데이터가 사라질 수 있다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "커밋 때 데이터 파일을 디스크에 쓴다는 주장",
+        "explanation": "커밋 시점에 동기적으로 쓰는 것은 로그다. 데이터 페이지를 매번 쓴다면 임의 쓰기 때문에 성능이 크게 떨어지며, 로그 선기록 구조의 존재 이유를 이해하지 못한 것이다."
+      },
+      {
+        "point": "binlog가 장애 복구용 로그라는 주장",
+        "explanation": "InnoDB의 장애 복구는 redo log로 한다. binlog는 복제와 시점 복구를 위한 서버 계층 로그이며, 복구 과정에서는 준비 상태 트랜잭션의 커밋 여부를 판단하는 데 쓰인다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "sync_binlog 누락",
+        "explanation": "redo log 설정만 다루고 binlog 동기화 설정(`sync_binlog`)을 빠뜨리면, 원본은 커밋했는데 binlog가 사라져 복제본과 어긋나는 경우를 설명하지 못한다."
+      },
+      {
+        "point": "synchronous_commit=off의 결과 과장",
+        "explanation": "PostgreSQL에서 이 설정은 최근 트랜잭션 유실 가능성만 만들고 데이터베이스 일관성을 깨지는 않는다. `fsync=off` 와 혼동하는 경우가 많다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 커밋 응답 전에 기록되어야 하는 것\n\nInnoDB는 redo log를, PostgreSQL은 WAL을 커밋 때 파일에 `write` 하고 `fsync` 로 저장 장치까지 내린 뒤 응답합니다. `write` 만 하면 운영체제 페이지 캐시에 머물러 정전 때 사라집니다. 변경된 데이터 페이지는 버퍼 풀(공유 버퍼)에 남았다가 체크포인트나 백그라운드 쓰기가 나중에 디스크에 씁니다. 장애가 나면 마지막 체크포인트 이후의 로그를 재실행해 복구합니다. 순차 쓰기인 로그만 동기로 쓰고 임의 쓰기인 페이지는 미루는 구조입니다. 페이지가 반쯤 쓰이는 경우에는 InnoDB doublewrite buffer와 PostgreSQL full page write가 대비합니다.\n\n### 2. 두 로그의 일관성과 fsync 비용\n\nMySQL은 복제용 binlog와 복구용 redo log를 내부 2단계 커밋으로 묶습니다. InnoDB가 redo log에 준비 상태를 기록하고, binlog를 쓰고 동기화한 뒤, InnoDB 커밋을 완료합니다. 복구 때 준비 상태 트랜잭션은 binlog에 있으면 커밋하고 없으면 롤백하므로, 원본 데이터와 복제본으로 가는 binlog가 어긋나지 않습니다. 이 보장은 `innodb_flush_log_at_trx_commit=1`, `sync_binlog=1` 일 때 성립합니다.\n\nfsync 비용은 그룹 커밋으로 줄입니다. 동시에 커밋하는 트랜잭션들의 로그를 한 번의 fsync로 묶는 방식이며, PostgreSQL에서도 한 번의 WAL 플러시가 그 위치까지의 다른 커밋을 함께 내구화합니다.\n\n### 3. 설정 완화와 복제의 유실 범위\n\n- `innodb_flush_log_at_trx_commit=2`: 커밋마다 운영체제까지만 쓰고 약 1초마다 fsync 합니다. MySQL 프로세스만 죽으면 남지만 운영체제 장애나 정전에서는 최근 약 1초의 커밋이 사라질 수 있습니다. `0` 이면 프로세스 장애에서도 사라질 수 있습니다.\n- PostgreSQL `synchronous_commit=off`: 최근 커밋을 잃을 수 있지만 데이터베이스가 손상되지는 않습니다.\n- 비동기 복제: 원본에 커밋되었지만 복제본에 전달되지 않은 트랜잭션은 장애 조치 후 사라집니다. MySQL 반동기 복제(`AFTER_SYNC`)나 PostgreSQL 동기 복제로 복제본 수신을 커밋 조건에 넣으면 막을 수 있지만 커밋 지연이 늘어납니다.",
+  "relatedStudyTopics": [
+    "InnoDB redo log와 innodb_flush_log_at_trx_commit",
+    "MySQL binlog와 InnoDB 내부 XA, 그룹 커밋",
+    "PostgreSQL WAL과 synchronous_commit",
+    "MySQL 반동기 복제 AFTER_SYNC",
+    "InnoDB doublewrite buffer와 PostgreSQL full_page_writes"
+  ]
+}

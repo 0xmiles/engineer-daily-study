@@ -1,0 +1,98 @@
+{
+  "id": "seed-code-review-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "code-review",
+  "topic": "mysql-postgresql",
+  "difficulty": "middle",
+  "title": "관리자 주문 목록 조회와 구매 확정 배치 쿼리 코드 리뷰",
+  "situation": "주문 서비스(Kotlin/Spring Boot, MySQL 8.0 InnoDB, 격리 수준은 기본값인 REPEATABLE READ)에 아래 저장소 코드가 리뷰 요청으로 올라왔습니다.\n\n운영 환경 정보는 다음과 같습니다.\n\n- `orders` 테이블은 약 5,000만 행이며 하루 약 30만 건씩 늘어납니다. 인덱스는 `PRIMARY KEY(id)`, `idx_created_at(created_at)`, `idx_status(status)` 입니다.\n- 관리자 화면은 날짜를 고르면 그날 주문을 페이지당 50건씩 보여 주고, \"엑셀 다운로드\" 버튼은 같은 함수를 0페이지부터 마지막 페이지까지 반복 호출합니다. 하루 주문은 30만 건이므로 마지막 페이지는 6,000페이지 정도입니다.\n- 구매 확정 배치는 매일 새벽 4시에 한 번 실행되며, 배송 완료 후 7일이 지난 주문을 확정합니다. 평소 대상은 약 30만 건이지만, 배치가 며칠 실패한 뒤 재개되면 100만 건이 넘습니다.\n- 고객의 반품 신청 API는 같은 시간대에도 `orders` 행을 갱신합니다. MySQL은 primary 1대와 읽기 복제본 2대로 구성되어 있습니다.\n\n```kotlin\n@Repository\nclass OrderJdbcRepository(private val jdbcTemplate: JdbcTemplate) {\n\n    fun findOrdersByDate(date: LocalDate, page: Int): List<OrderRow> =\n        jdbcTemplate.query(\n            \"\"\"\n            SELECT id, member_id, status, total_amount, created_at\n            FROM orders\n            WHERE DATE(created_at) = ?\n            ORDER BY id DESC\n            LIMIT 50 OFFSET ?\n            \"\"\".trimIndent(),\n            orderRowMapper, date, page * 50,\n        )\n\n    @Transactional\n    fun confirmDeliveredOrders(deliveredBefore: LocalDateTime): Int =\n        jdbcTemplate.update(\n            \"\"\"\n            UPDATE orders\n            SET status = 'CONFIRMED', confirmed_at = NOW()\n            WHERE status = 'DELIVERED'\n              AND delivered_at < ?\n            \"\"\".trimIndent(),\n            deliveredBefore,\n        )\n}\n```",
+  "requirements": [
+    "이 코드와 SQL에서 결함을 찾고, 각 결함이 운영 중 어떤 증상으로 드러나는지 설명하세요.",
+    "찾은 결함을 심각도 순서로 나열하고, 그 순서의 근거를 쓰세요.",
+    "결함마다 수정한 SQL이나 코드를 제시하세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "인덱스 컬럼에 함수를 적용해 인덱스 범위 검색 불가",
+    "OFFSET 기반 깊은 페이지네이션 비용",
+    "대량 UPDATE 단일 트랜잭션의 장시간 락과 복제 지연"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "컬럼에 함수를 적용한 조건",
+        "explanation": "`DATE(created_at) = ?` 는 컬럼 값을 가공해서 비교하므로 `idx_created_at` 으로 범위 검색을 할 수 없고 대량 스캔으로 이어진다는 점을 지적하고, `created_at >= ? AND created_at < ?` 형태의 범위 조건으로 바꾸는 안을 제시해야 한다. MySQL 8.0.13 이상의 함수 기반 인덱스를 대안으로 함께 제시해도 인정한다."
+      },
+      {
+        "point": "깊은 OFFSET의 비용",
+        "explanation": "OFFSET은 앞의 행을 모두 읽고 버리므로 뒤 페이지일수록 느려지고, 엑셀 다운로드처럼 전체 페이지를 반복하면 총 읽기량이 페이지 수의 제곱에 비례해 늘어난다는 점을 지적해야 한다. 마지막으로 읽은 키 이후를 조회하는 방식(키셋 페이지네이션)으로 바꾸는 안을 제시해야 한다."
+      },
+      {
+        "point": "대량 UPDATE 한 번의 긴 락",
+        "explanation": "수십만~100만 행을 한 문장, 한 트랜잭션으로 갱신하면 커밋까지 대상 행의 락이 유지되어 반품 신청 같은 같은 행 갱신이 대기하다 락 대기 시간 초과로 실패한다는 점을 지적해야 한다. 기본 키 범위나 `LIMIT` 단위로 나누어 청크마다 커밋하는 수정안을 제시해야 한다."
+      },
+      {
+        "point": "대량 트랜잭션의 부수 영향",
+        "explanation": "큰 트랜잭션이 undo 로그를 크게 키우고, 커밋된 뒤 복제본에서 한 번에 적용되면서 복제 지연을 만든다는 점 중 하나 이상을 설명해야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "스캔한 행까지 잠기는 동작",
+        "explanation": "REPEATABLE READ에서 InnoDB는 인덱스로 스캔한 레코드에 락을 걸기 때문에, `idx_status` 로 `DELIVERED` 행을 훑으면 `delivered_at` 조건에 맞지 않는 행까지 잠길 수 있다는 점과 `(status, delivered_at)` 복합 인덱스로 스캔 범위를 줄이는 방법을 설명한다."
+      },
+      {
+        "point": "보조 인덱스에 기본 키가 포함되는 점 활용",
+        "explanation": "InnoDB 보조 인덱스의 리프에는 기본 키가 들어 있으므로 `ORDER BY created_at DESC, id DESC` 로 바꾸면 `idx_created_at` 만으로 정렬과 키셋 조건을 처리할 수 있다는 점을 짚는다."
+      },
+      {
+        "point": "청크 처리 중 상태 재확인",
+        "explanation": "청크마다 `WHERE status = 'DELIVERED'` 조건을 유지해 그사이 반품으로 상태가 바뀐 주문을 확정하지 않도록 한다."
+      },
+      {
+        "point": "청크 사이 대기",
+        "explanation": "청크 사이에 짧게 쉬거나 복제 지연을 확인해 복제본이 따라올 시간을 준다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "격리 수준을 낮추면 락 문제가 사라진다는 주장",
+        "explanation": "READ COMMITTED로 바꾸면 조건에 맞지 않는 행의 락은 일찍 풀리지만, 실제로 갱신한 행의 락은 커밋까지 유지되므로 긴 트랜잭션 문제는 그대로다."
+      },
+      {
+        "point": "`OFFSET` 위치만 캐시하면 된다는 주장",
+        "explanation": "페이지 번호를 기억해도 데이터베이스는 여전히 앞의 행을 모두 읽어야 하므로 비용이 줄지 않는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "`@Transactional` 을 지우면 나뉜다는 오해",
+        "explanation": "하나의 UPDATE 문장은 그 자체로 하나의 트랜잭션이므로 애노테이션을 지워도 락 유지 시간은 같다. 문장을 나눠야 한다."
+      },
+      {
+        "point": "함수 적용 결함을 정렬 문제로 착각",
+        "explanation": "느린 원인을 `ORDER BY` 나 `LIMIT` 탓으로만 보고 조건절의 함수가 인덱스 사용을 막는 점을 놓친다."
+      }
+    ]
+  },
+  "perspectives": [
+    "결함 발견",
+    "심각도 판단",
+    "수정안의 구체성",
+    "발생 상황 설명"
+  ],
+  "modelAnswer": "### 1. 결함과 증상\n\n**(1) `DATE(created_at) = ?`** 는 컬럼 값을 함수로 가공해서 비교하므로 `idx_created_at` 으로 범위를 좁힐 수 없습니다. 옵티마이저는 기본 키를 역순으로 훑으며 행마다 조건을 검사하거나 테이블 전체를 읽게 되고, 고른 날짜가 오래될수록 그날에 닿기 전까지 읽고 버리는 행이 수천만 행까지 늘어납니다.\n\n**(2) `LIMIT 50 OFFSET ?`** 는 앞의 행을 모두 읽고 버립니다. 6,000번째 페이지는 30만 행을 읽고 50건만 돌려줍니다. 엑셀 다운로드는 이런 조회를 6,000번 반복하므로 읽기량이 페이지 수의 제곱에 비례해 늘어나고, (1)과 겹치면 매번 대량 스캔이 반복됩니다.\n\n**(3) 구매 확정 UPDATE** 는 대상 전체를 한 문장, 한 트랜잭션으로 갱신합니다. 커밋까지 수십만 행의 락이 유지되어 같은 시간대의 반품 신청이 락을 기다리다 `innodb_lock_wait_timeout`(기본 50초)에 걸려 실패합니다. 배치가 밀려 100만 건이 되면 더 심해집니다. 또한 undo 로그가 커지고, 커밋된 큰 트랜잭션이 복제본에서 한 번에 적용되면서 복제 지연이 생겨 복제본을 읽는 화면이 오래된 데이터를 보여 줍니다. REPEATABLE READ에서는 `idx_status` 로 스캔한 `DELIVERED` 행 중 7일이 지나지 않은 행까지 잠길 수 있습니다.\n\n### 2. 심각도 순서\n\n1. **대량 UPDATE(높음):** 고객 기능인 반품 신청이 실패하고 복제 지연까지 번집니다. 운영 동시성 아래에서만 드러나 테스트에서 놓치기 쉽습니다.\n2. **함수 적용 조건(높음):** 관리자 조회마다 전체 스캔을 일으켜 primary나 복제본의 자원을 계속 소모합니다.\n3. **깊은 OFFSET(중간):** 관리자 기능에 한정되지만 다운로드 한 번이 데이터베이스에 큰 부하를 줍니다.\n\n### 3. 수정안\n\n```sql\n-- 조회: 범위 조건 + 키셋 페이지네이션\nSELECT id, member_id, status, total_amount, created_at\nFROM orders\nWHERE created_at >= :dayStart AND created_at < :nextDayStart\n  AND (created_at, id) < (:lastCreatedAt, :lastId)\nORDER BY created_at DESC, id DESC\nLIMIT 50;\n```\n\n첫 페이지는 키셋 조건 없이 조회합니다. 행 생성자 비교가 인덱스 범위로 처리되지 않는 경우에는 `created_at < :lastCreatedAt OR (created_at = :lastCreatedAt AND id < :lastId)` 로 풀어 씁니다. 보조 인덱스에는 기본 키가 들어 있으므로 `idx_created_at` 만으로 정렬까지 처리됩니다.\n\n```kotlin\nfun confirmDeliveredOrders(deliveredBefore: LocalDateTime) {\n    var lastId = 0L\n    while (true) {\n        val ids = jdbcTemplate.queryForList(\n            \"SELECT id FROM orders WHERE status = 'DELIVERED' AND delivered_at < ? AND id > ? ORDER BY id LIMIT 1000\",\n            Long::class.java, deliveredBefore, lastId,\n        )\n        if (ids.isEmpty()) return\n        confirmChunk(ids, deliveredBefore) // UPDATE 한 문장이 청크마다 바로 커밋된다\n        lastId = ids.last()\n        Thread.sleep(100)\n    }\n}\n```\n\n바깥 함수에는 `@Transactional` 을 붙이지 않습니다. `confirmChunk` 는 `UPDATE ... WHERE id IN (...) AND status = 'DELIVERED' AND delivered_at < ?` 로 상태를 다시 확인해, 그사이 반품으로 바뀐 주문은 건너뜁니다. 인덱스는 `(status, delivered_at)` 복합 인덱스를 추가해 스캔과 락 범위를 줄입니다.",
+  "relatedStudyTopics": [
+    "MySQL 인덱스와 sargable 조건",
+    "키셋 페이지네이션(seek method)",
+    "InnoDB 레코드 락과 next-key 락",
+    "대량 갱신 청크 처리와 복제 지연"
+  ]
+}

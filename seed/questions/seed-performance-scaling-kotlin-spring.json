@@ -1,0 +1,100 @@
+{
+  "id": "seed-performance-scaling-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "performance-scaling",
+  "topic": "kotlin-spring",
+  "difficulty": "middle",
+  "title": "주문 내역 엑셀 다운로드 중 반복되는 메모리 부족과 긴 GC 정지",
+  "situation": "판매자 정산 백오피스(Kotlin/Spring Boot 3, Spring Data JPA, MySQL 8.4)는 Kubernetes 파드 4대로 운영합니다. 파드마다 컨테이너 메모리는 4GiB, 최대 힙은 3GiB이고 G1 GC를 씁니다. 판매자는 기간(최대 3개월)을 골라 주문 내역을 xlsx 파일로 내려받습니다.\n\n```kotlin\n@Service\nclass OrderExcelService(private val orderRepository: OrderRepository) {\n    @Transactional(readOnly = true)\n    fun createExcel(sellerId: Long, from: LocalDate, to: LocalDate): ByteArray {\n        val orders: List<Order> = orderRepository.findAllBySellerIdAndOrderedAtBetween(\n            sellerId, from.atStartOfDay(), to.plusDays(1).atStartOfDay()\n        )\n        val workbook = XSSFWorkbook()\n        val sheet = workbook.createSheet(\"orders\")\n        writeHeader(sheet)\n        orders.forEachIndexed { index, order ->\n            val row = sheet.createRow(index + 1)\n            ORDER_COLUMNS.forEachIndexed { column, extractor ->\n                row.createCell(column).setCellValue(extractor(order))   // 15개 열\n            }\n        }\n        val output = ByteArrayOutputStream()\n        workbook.write(output)\n        workbook.close()\n        return output.toByteArray()\n    }\n}\n// 컨트롤러는 createExcel()의 결과를 ResponseEntity<ByteArray>로 그대로 반환합니다.\n```\n\n- 다운로드 요청은 하루 약 300건이고 대부분 1만 행 이하입니다. 매월 정산 시기에 상위 판매자 20곳이 3개월치(30만~50만 행)를 내려받습니다.\n- 40만 행 요청 하나를 처리하는 데 3~5분이 걸리고, 그동안 힙 사용량이 3GiB 가까이 차서 5~10초짜리 Full GC 정지가 여러 번 생깁니다.\n- 큰 요청 두 건이 같은 파드에 겹치면 `OutOfMemoryError` 가 나고, 같은 파드의 다른 API(정산 조회 등)까지 응답이 멈췄다가 liveness probe 실패로 파드가 재시작됩니다.\n- 로드 밸런서 유휴 타임아웃이 60초로 설정되어 있어, 큰 요청은 파드가 살아남아도 사용자 쪽 연결이 먼저 끊깁니다.\n- 판매자들은 xlsx 형식을 계속 원하고, 개선은 2주 안에 1차 배포해야 합니다.",
+  "requirements": [
+    "40만 행 요청 하나가 힙을 얼마나 쓰는지 대략 추정하고, 코드에서 메모리를 차지하는 지점을 짚으세요.",
+    "지금처럼 요청을 받은 자리에서 파일을 만들어 돌려주는 구조를 유지하면서, 행 수와 관계없이 메모리 사용량을 일정하게 만드는 방법을 제시하세요.",
+    "요청 처리 방식 자체를 바꾸는 방안을 제시하고, 앞의 방법과 비교해 어떤 순서로 적용할지 결정하세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "조회 결과 전체 적재와 영속성 컨텍스트 스냅샷으로 인한 힙 증가",
+    "XSSFWorkbook 전체 셀 객체 보유와 SXSSFWorkbook 행 윈도 방식",
+    "청크 조회와 응답 스트리밍으로 메모리 사용량 상한 고정",
+    "대용량 파일의 비동기 생성과 동시 실행 수 제한"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "메모리 지점과 규모 추정",
+        "explanation": "다음 세 지점을 짚고 합계가 3GiB 힙을 넘나드는 규모라는 점을 추정해야 한다. 40만 개 엔티티를 한 번에 담은 `List` 와 영속성 컨텍스트가 변경 감지용으로 들고 있는 스냅샷(엔티티 하나에 수 KB를 잡으면 1GB 안팎), `XSSFWorkbook` 이 600만 개(40만×15) 셀 객체를 모두 힙에 두는 것(셀 하나에 수백 바이트를 잡으면 수 GB), `ByteArrayOutputStream` 과 `toByteArray()` 복사로 완성 파일이 두세 벌 생기는 것. 동시 요청이면 그 배수가 된다는 점도 써야 한다."
+      },
+      {
+        "point": "조회를 청크 단위로",
+        "explanation": "기본 키 기준 키셋 페이지네이션이나 fetch size를 지정한 스트림 조회로 일정 건수씩 읽고, 청크마다 영속성 컨텍스트를 비우거나(`clear()`) 엔티티 대신 DTO 프로젝션으로 읽어 스냅샷이 쌓이지 않게 하는 방법을 제시해야 한다."
+      },
+      {
+        "point": "파일 생성과 응답을 스트리밍으로",
+        "explanation": "`SXSSFWorkbook` 처럼 최근 일정 행만 힙에 두고 나머지는 임시 파일로 내리는 방식으로 바꾸고, `ByteArray` 대신 `StreamingResponseBody` 등으로 응답 출력 스트림에 바로 쓰게 하는 방법을 제시해야 한다."
+      },
+      {
+        "point": "비동기 생성과 적용 순서 결정",
+        "explanation": "요청을 작업으로 등록하고 별도 작업자가 파일을 만들어 S3 같은 저장소에 올린 뒤 다운로드 링크를 주는 방식을 제시하고, 이것이 60초 유휴 타임아웃과 다른 API에 대한 영향, 동시 실행 수 제어를 해결한다는 점을 비교해야 한다. 2주 제약 안에서 무엇을 먼저 하고 무엇을 다음에 할지 순서와 근거를 써야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "SXSSFWorkbook의 첫 바이트 지연",
+        "explanation": "`SXSSFWorkbook` 은 `write()` 를 호출할 때 임시 파일을 모아 압축 파일을 만들기 때문에, 응답을 스트리밍해도 모든 행을 만들기 전에는 첫 바이트가 나가지 않아 유휴 타임아웃 문제가 남는다는 점을 지적한다."
+      },
+      {
+        "point": "xlsx 시트 행 수 한도",
+        "explanation": "xlsx 시트 하나는 1,048,576행까지만 담을 수 있으므로 기간 확장 시 시트 분할이 필요하다는 점을 언급한다."
+      },
+      {
+        "point": "동기 스트리밍의 커넥션 점유",
+        "explanation": "요청을 받은 자리에서 끝까지 스트리밍하면 그동안 DB 커넥션과 요청 스레드를 수 분간 점유하므로, 큰 요청은 읽기 복제본을 쓰거나 동시 실행 수를 세마포어 등으로 제한해야 한다는 점을 다룬다."
+      },
+      {
+        "point": "요청 크기로 경로 나누기",
+        "explanation": "먼저 건수를 세어 작은 요청은 즉시 내려주고 큰 요청만 비동기로 보내 대부분의 사용자 경험을 유지하는 방안을 제시한다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "힙 크기만 늘리면 된다는 주장",
+        "explanation": "메모리 사용량이 행 수와 동시 요청 수에 비례하므로 힙을 늘려도 더 큰 요청이나 겹치는 요청에서 다시 터지고, 힙이 커질수록 GC 정지도 길어질 수 있다."
+      },
+      {
+        "point": "같은 파드에서 제한 없이 비동기 실행",
+        "explanation": "`@Async` 등으로 같은 파드 안에서 개수 제한 없이 백그라운드 실행하면 응답 타임아웃만 사라지고 메모리 부족과 다른 API 영향은 그대로 남는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "스트림 조회만 하고 영속성 컨텍스트를 비우지 않는 것",
+        "explanation": "스트림이나 페이지로 읽어도 같은 트랜잭션의 영속성 컨텍스트가 모든 엔티티를 계속 들고 있으면 메모리가 그대로 쌓인다."
+      },
+      {
+        "point": "OFFSET 페이지네이션",
+        "explanation": "OFFSET이 커질수록 앞의 행을 매번 건너뛰며 읽어 뒤쪽 페이지가 점점 느려지므로 기본 키 기준 키셋 방식이 낫다."
+      }
+    ]
+  },
+  "modelAnswer": "### 1. 메모리 사용량 추정과 지점\n\n- **조회 결과 전체 적재**: 40만 개 엔티티가 `List` 에 담기고, 영속성 컨텍스트가 변경 감지용 스냅샷까지 들고 있습니다. 엔티티와 스냅샷을 합쳐 하나에 2~3KB로 잡으면 약 1GB입니다.\n- **`XSSFWorkbook`**: 모든 셀을 객체로 힙에 둡니다. 40만 × 15 = 600만 셀이고, 셀 하나에 수백 바이트만 잡아도 2GB 안팎입니다.\n- **`ByteArrayOutputStream` 과 `toByteArray()`**: 완성된 파일이 버퍼와 복사본으로 두 벌 이상 생깁니다.\n\n합계가 3GiB 힙에 가까우므로 GC가 거의 회수하지 못한 채 Full GC를 반복하고, 큰 요청 두 건이 겹치면 메모리가 부족해집니다.\n\n### 2. 동기 구조를 유지하면서 메모리를 일정하게\n\n- 조회는 `id > :lastId ORDER BY id LIMIT 2000` 같은 키셋 페이지네이션으로 나눠 읽고, 엔티티 대신 DTO 프로젝션을 쓰거나 청크마다 `entityManager.clear()` 로 스냅샷을 비웁니다.\n- 파일은 `SXSSFWorkbook(100)` 으로 만들어 최근 100행만 힙에 두고 나머지는 임시 파일로 내립니다. 끝나면 임시 파일을 정리합니다.\n- 응답은 `StreamingResponseBody` 로 출력 스트림에 바로 써서 `ByteArray` 를 없앱니다.\n\n이렇게 하면 메모리는 행 수와 관계없이 수십 MB 수준으로 고정됩니다. 다만 `SXSSFWorkbook` 은 `write()` 때 파일을 조립하므로 모든 행을 만들기 전에는 첫 바이트가 나가지 않아 60초 유휴 타임아웃은 해결되지 않습니다. 수 분 동안 DB 커넥션과 요청 스레드도 점유합니다.\n\n### 3. 비동기 생성과 적용 순서\n\n다운로드 요청을 작업으로 등록하고 즉시 작업 번호를 돌려줍니다. 별도 작업자(전용 파드나 큐 소비자)가 읽기 복제본에서 2번 방식으로 파일을 만들어 S3에 올리고, 완료되면 만료 시간이 있는 다운로드 링크를 알림으로 줍니다. 타임아웃이 사라지고, 작업자 수로 동시 실행을 제한하며, 정산 조회 API와 자원을 분리합니다. 대신 작업 상태 관리, 파일 보관·삭제 정책, 화면 변경이 필요합니다.\n\n- **1차(2주 안)**: 2번의 청크 조회·`SXSSFWorkbook`·스트리밍 응답을 적용하고, 파드마다 큰 요청 동시 실행 수를 1로 제한합니다. 메모리 부족과 다른 API 영향부터 없앱니다.\n- **2차**: 먼저 건수를 세어 5만 행 이하는 즉시 내려주고, 그보다 큰 요청만 비동기로 보냅니다. 대부분의 판매자는 지금과 같은 경험을 유지합니다.",
+  "relatedStudyTopics": [
+    "Apache POI SXSSFWorkbook 행 윈도와 임시 파일",
+    "Spring MVC StreamingResponseBody",
+    "JPA 영속성 컨텍스트와 대량 조회 시 clear",
+    "키셋 페이지네이션과 OFFSET 페이지네이션 비교",
+    "G1 GC Full GC 발생 조건"
+  ],
+  "perspectives": [
+    "측정 근거",
+    "용량 추정",
+    "단계별 대응",
+    "비용 고려"
+  ]
+}

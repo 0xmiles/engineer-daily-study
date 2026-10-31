@@ -1,0 +1,11 @@
+{
+  "title": "DuplicateCheck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["isDuplicate", "duplicateOfId", "reason"],
+  "properties": {
+    "isDuplicate": { "type": "boolean" },
+    "duplicateOfId": { "type": "string" },
+    "reason": { "type": "string" }
+  }
+}

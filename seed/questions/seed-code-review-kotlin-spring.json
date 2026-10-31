@@ -1,0 +1,98 @@
+{
+  "id": "seed-code-review-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "code-review",
+  "topic": "kotlin-spring",
+  "difficulty": "middle",
+  "title": "코루틴으로 여러 조회를 묶은 주문 상세 서비스 코드 리뷰",
+  "situation": "주문 상세 API(Kotlin, Spring Boot 3, Spring WebFlux와 코루틴)는 주문·배송·리뷰 정보를 한 번에 묶어서 돌려줍니다. 응답 시간을 줄이려고 조회를 병렬로 바꾼 아래 코드가 리뷰 요청으로 올라왔습니다.\n\n운영 환경 정보는 다음과 같습니다.\n\n- 파드 8개, 파드마다 vCPU 2개, 피크 트래픽은 전체 초당 약 1,200건입니다.\n- 주문과 감사 로그는 Spring Data JPA(MySQL, HikariCP 최대 커넥션 10개)로 저장합니다.\n- `DeliveryClient` 는 `RestTemplate` 기반 클라이언트입니다. 배송 서비스의 응답은 보통 80ms이지만, 배송 서비스가 배포하는 동안에는 2~3초까지 늘어납니다.\n- `ReviewClient` 는 `WebClient` 기반의 suspend 함수입니다.\n- 감사 로그는 개인정보 열람 기록이라 누락되면 안 됩니다. 파드는 배포 때마다 순차로 재시작됩니다.\n\n```kotlin\n@Service\nclass OrderDetailService(\n    private val orderRepository: OrderRepository,\n    private val deliveryClient: DeliveryClient,\n    private val reviewClient: ReviewClient,\n    private val auditLogRepository: AuditLogRepository,\n) {\n    suspend fun getOrderDetail(orderId: Long, memberId: Long): OrderDetail = coroutineScope {\n        val order = withContext(Dispatchers.Default) {\n            orderRepository.findById(orderId).orElseThrow { OrderNotFoundException(orderId) }\n        }\n\n        val delivery = async(Dispatchers.Default) {\n            deliveryClient.getDelivery(orderId)\n        }\n        val review = async {\n            try {\n                reviewClient.getReview(orderId)\n            } catch (e: Exception) {\n                null\n            }\n        }\n\n        GlobalScope.launch {\n            auditLogRepository.save(AuditLog(memberId, \"ORDER_DETAIL_VIEW\", orderId))\n        }\n\n        OrderDetail.of(order, delivery.await(), review.await())\n    }\n}\n```",
+  "requirements": [
+    "이 코드에서 결함을 찾고, 각 결함이 운영 중 어떤 상황에서 드러나는지 설명하세요.",
+    "찾은 결함을 심각도 순서로 나열하고, 그 순서의 근거를 쓰세요.",
+    "결함마다 구체적인 수정 코드나 수정 방향을 제시하세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "블로킹 호출을 Dispatchers.Default에서 실행해 스레드 고갈",
+    "예외를 삼켜 장애와 취소 신호가 사라짐",
+    "GlobalScope로 구조화된 동시성을 벗어난 비동기 작업"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "Default 디스패처에서 블로킹 호출",
+        "explanation": "JPA 조회와 `RestTemplate` 호출은 스레드를 붙잡는 블로킹 호출인데, `Dispatchers.Default` 는 CPU 코어 수(최소 2개)만큼의 스레드만 가진다는 점을 지적해야 한다. vCPU 2개 파드에서 배송 서비스가 2~3초로 느려지면 두 스레드가 모두 묶여 이 디스패처를 쓰는 다른 요청까지 멈춘다는 상황을 써야 충족이다."
+      },
+      {
+        "point": "예외를 삼키는 처리",
+        "explanation": "`catch (e: Exception)` 이 로그 없이 `null` 을 반환해 리뷰 서비스 장애가 지표와 로그에 드러나지 않는다는 점, 그리고 `CancellationException` 까지 잡아 취소를 정상 결과처럼 바꿔 버린다는 점 중 하나 이상을 지적해야 한다. 둘 다 쓰면 가장 좋다."
+      },
+      {
+        "point": "GlobalScope 사용",
+        "explanation": "감사 로그 저장이 요청의 코루틴 범위 밖에서 실행되어 실패가 호출자에게 전달되지 않고, 파드 재시작 때 실행 중이던 작업이 사라져 감사 로그가 누락될 수 있다는 점을 지적해야 한다."
+      },
+      {
+        "point": "구체적인 수정안",
+        "explanation": "블로킹 호출은 `Dispatchers.IO`(또는 크기를 제한한 전용 디스패처)로 옮기거나 논블로킹 클라이언트로 바꾸고, 예외는 구체적인 타입만 잡고 `CancellationException` 은 다시 던지며 로그를 남기고, 감사 로그는 요청 흐름 안에서 저장하거나 유실되지 않는 경로(같은 요청 안의 저장, 메시지 큐, 아웃박스 테이블)로 옮기는 안을 제시해야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "커넥션 풀과의 상호작용",
+        "explanation": "GlobalScope로 띄운 저장 작업이 부하 때 계속 쌓이면 커넥션 10개를 두고 본 요청의 주문 조회와 경쟁해 커넥션 대기가 길어진다는 점을 짚는다."
+      },
+      {
+        "point": "GlobalScope 작업도 Default 디스패처에서 실행",
+        "explanation": "디스패처를 지정하지 않은 `GlobalScope.launch` 는 `Dispatchers.Default` 에서 실행되므로 블로킹 JPA 저장이 Default 스레드를 또 점유한다는 점을 짚는다."
+      },
+      {
+        "point": "배송 실패 시 형제 코루틴 취소",
+        "explanation": "`coroutineScope` 안에서 배송 조회가 실패하면 리뷰 조회도 취소되고 예외가 호출자로 전파된다는 구조화된 동시성의 동작과, 배송 정보를 선택적으로 보여 줄지에 대한 판단을 설명한다."
+      },
+      {
+        "point": "추적 문맥 유실",
+        "explanation": "GlobalScope로 띄운 작업에는 요청의 추적 ID나 로깅 문맥이 전달되지 않아 문제가 생겨도 요청과 연결하기 어렵다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "`runBlocking` 으로 감싸면 된다는 주장",
+        "explanation": "`runBlocking` 은 호출한 스레드를 막으므로 리액터 스레드나 Default 스레드에서 쓰면 스레드 고갈을 더 악화시킨다."
+      },
+      {
+        "point": "`Dispatchers.Unconfined` 로 바꾸면 된다는 주장",
+        "explanation": "Unconfined는 호출한 스레드에서 그대로 실행되므로 블로킹 호출이 요청 처리 스레드를 막는 문제가 해결되지 않는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "IO 디스패처가 무제한이라는 오해",
+        "explanation": "`Dispatchers.IO` 도 기본으로 64개(또는 코어 수가 더 크면 코어 수) 스레드로 제한되므로, 느린 외부 호출에는 타임아웃을 함께 설정해야 한다."
+      },
+      {
+        "point": "`async` 가 별도 스레드를 만든다는 오해",
+        "explanation": "`async` 는 코루틴을 만들 뿐이며, 어떤 스레드에서 실행될지는 디스패처가 정한다."
+      }
+    ]
+  },
+  "perspectives": [
+    "결함 발견",
+    "심각도 판단",
+    "수정안의 구체성",
+    "발생 상황 설명"
+  ],
+  "modelAnswer": "### 1. 결함과 드러나는 상황\n\n**(1) 블로킹 호출을 `Dispatchers.Default` 에서 실행합니다.** `findById` 와 `RestTemplate` 호출은 응답이 올 때까지 스레드를 붙잡습니다. Default 디스패처는 CPU 코어 수(최소 2개)만큼의 스레드만 가지므로 vCPU 2개 파드에서는 스레드가 2개뿐입니다. 배송 서비스가 배포 중이라 2~3초씩 걸리면 두 스레드가 모두 묶이고, 같은 디스패처를 쓰는 다른 요청의 작업도 대기열에서 멈춰 파드 전체 응답이 느려집니다.\n\n**(2) 예외를 삼킵니다.** 리뷰 조회 실패가 로그 없이 `null` 이 되어 리뷰 서비스가 장애여도 알 수 없습니다. 또한 `Exception` 은 `CancellationException` 을 포함하므로 취소 신호까지 정상 결과로 바뀝니다. 지금은 바로 반환하지만, 뒤에 후속 처리가 붙으면 취소된 뒤에도 작업이 이어지는 코드가 됩니다.\n\n**(3) `GlobalScope.launch` 로 감사 로그를 저장합니다.** 요청 범위 밖에서 돌기 때문에 저장이 실패해도 호출자는 모르고, 파드가 재시작되면 실행 중이던 저장이 그대로 사라집니다. 디스패처를 지정하지 않았으니 이 작업도 Default 스레드에서 블로킹 저장을 합니다. 부하가 높으면 저장 작업이 쌓여 커넥션 10개를 놓고 본 요청과 경쟁합니다.\n\n### 2. 심각도 순서\n\n1. **블로킹 호출(높음):** 외부 서비스 한 곳의 지연이 파드 전체 장애로 번집니다. 배포처럼 흔한 상황에서 생깁니다.\n2. **GlobalScope(높음):** 누락되면 안 되는 개인정보 열람 기록이 배포 때마다 조용히 사라질 수 있고, 커넥션 경쟁으로 1번을 악화시킵니다.\n3. **예외 삼킴(중간):** 직접적인 데이터 손상은 없지만 장애 감지를 늦추고 취소 처리를 깨뜨립니다.\n\n### 3. 수정안\n\n```kotlin\nsuspend fun getOrderDetail(orderId: Long, memberId: Long): OrderDetail = coroutineScope {\n    val order = withContext(Dispatchers.IO) {\n        orderRepository.findById(orderId).orElseThrow { OrderNotFoundException(orderId) }\n    }\n    val delivery = async(Dispatchers.IO) { deliveryClient.getDelivery(orderId) }\n    val review = async { fetchReviewOrNull(orderId) }\n\n    withContext(Dispatchers.IO) {\n        auditLogRepository.save(AuditLog(memberId, \"ORDER_DETAIL_VIEW\", orderId))\n    }\n    OrderDetail.of(order, delivery.await(), review.await())\n}\n\nprivate suspend fun fetchReviewOrNull(orderId: Long): Review? =\n    try {\n        reviewClient.getReview(orderId)\n    } catch (e: WebClientException) {\n        log.warn(\"review lookup failed. orderId={}\", orderId, e)\n        null\n    }\n```\n\n- 블로킹 호출은 `Dispatchers.IO` 로 옮기고, `RestTemplate` 에 읽기 타임아웃을 둡니다. 가능하면 배송 클라이언트를 `WebClient` 기반 suspend 함수로 바꿉니다.\n- 예외는 구체적인 타입만 잡고 로그와 실패 지표를 남깁니다. 넓게 잡아야 한다면 `CancellationException` 은 다시 던집니다.\n- 감사 로그는 요청 흐름 안에서 저장해 실패가 드러나게 합니다. 응답 지연이 문제라면 메시지 큐나 아웃박스 테이블처럼 재시작에도 유실되지 않는 경로로 넘기고, 애플리케이션 수명에 묶인 `CoroutineScope` 를 쓰더라도 종료 시 작업 완료를 기다리도록 만듭니다.",
+  "relatedStudyTopics": [
+    "Kotlin 코루틴 디스패처(Default, IO, limitedParallelism)",
+    "구조화된 동시성과 coroutineScope",
+    "CancellationException과 협력적 취소",
+    "Spring WebFlux와 코루틴 통합"
+  ]
+}

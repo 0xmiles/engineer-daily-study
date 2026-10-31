@@ -1,0 +1,106 @@
+{
+  "id": "seed-code-review-distributed-systems",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "code-review",
+  "topic": "distributed-systems",
+  "difficulty": "senior",
+  "title": "Redis로 만든 재고 동기화 락 코드 리뷰",
+  "situation": "재고 서비스(Kotlin/Spring Boot, MySQL)는 창고 시스템의 실제 수량을 받아 SKU별 판매 가능 수량을 다시 계산합니다. 같은 SKU의 동기화가 여러 인스턴스에서 동시에 돌지 않도록 Redis로 락을 만든 아래 코드가 리뷰 요청으로 올라왔습니다.\n\n운영 환경 정보는 다음과 같습니다.\n\n- 인스턴스 6대가 같은 Kafka 토픽의 재고 변경 알림을 처리합니다. 알림 키가 SKU가 아니어서, 같은 SKU의 알림이 짧은 간격으로 여러 인스턴스에 나뉘어 들어옵니다.\n- Redis는 Sentinel 구성(primary 1대, replica 2대, 비동기 복제)입니다.\n- 창고 API 응답은 보통 200ms지만, 창고 시스템이 정산 작업을 하는 시간대에는 15초를 넘기도 합니다. HTTP 읽기 타임아웃은 30초입니다.\n- 인스턴스는 가끔 1~2초 길이의 GC 정지를 겪습니다.\n- 최근 \"판매 가능 수량이 실제보다 많게 표시되어 초과 판매가 났다\"는 문의가 주 몇 건씩 들어옵니다.\n\n```kotlin\n@Component\nclass RedisLock(private val redisTemplate: StringRedisTemplate) {\n\n    fun tryLock(key: String): Boolean =\n        redisTemplate.opsForValue().setIfAbsent(key, \"locked\", Duration.ofSeconds(10)) == true\n\n    fun unlock(key: String) {\n        redisTemplate.delete(key)\n    }\n}\n\n@Service\nclass StockSyncService(\n    private val redisLock: RedisLock,\n    private val stockRepository: StockRepository,\n    private val warehouseClient: WarehouseClient,\n) {\n    fun syncStock(skuId: Long) {\n        val lockKey = \"lock:stock-sync:$skuId\"\n        while (!redisLock.tryLock(lockKey)) {\n            Thread.sleep(50)\n        }\n        try {\n            val warehouseQuantity = warehouseClient.fetchQuantity(skuId)\n            val stock = stockRepository.findBySkuId(skuId)\n            stock.availableQuantity = warehouseQuantity - stock.reservedQuantity\n            stockRepository.save(stock)\n        } finally {\n            redisLock.unlock(lockKey)\n        }\n    }\n}\n```",
+  "requirements": [
+    "이 코드에서 결함을 찾고, 각 결함이 어떤 순서의 사건을 거쳐 재고 수량을 틀리게 만드는지 설명하세요.",
+    "찾은 결함을 심각도 순서로 나열하고, 그 순서의 근거를 쓰세요.",
+    "락 구현과 사용 코드를 어떻게 고칠지 구체적으로 제시하세요.",
+    "수정한 락으로도 막을 수 없는 경우가 무엇인지, 그 경우를 저장소 쪽에서 어떻게 막을지 설명하세요.",
+    "현재 Redis 구성에서 이 락이 보장하는 수준을 평가하고, 어떤 조건이면 다른 방식으로 바꾸겠는지 쓰세요."
+  ],
+  "recommendedLength": {
+    "min": 800,
+    "max": 1500
+  },
+  "keyIssues": [
+    "작업 시간보다 짧은 고정 락 만료 시간",
+    "소유자 확인 없는 락 해제",
+    "락 만료 후에도 계속되는 작업과 펜싱 토큰",
+    "비동기 복제 장애 조치 시 락 유실"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "고정 만료 시간과 작업 시간의 불일치",
+        "explanation": "락 만료가 10초로 고정되어 있는데 창고 API가 15초 이상 걸리면 작업 도중 락이 풀리고, 다른 인스턴스가 같은 SKU 작업을 시작해 두 작업이 겹친다는 점을 사건 순서로 설명해야 한다. 늦게 끝난 쪽이 오래된 창고 수량으로 덮어써 판매 가능 수량이 실제보다 커지는 결과까지 연결해야 충족이다."
+      },
+      {
+        "point": "다른 소유자의 락 해제",
+        "explanation": "값이 모두 \"locked\" 이고 해제 때 소유자를 확인하지 않으므로, 만료 뒤 늦게 끝난 인스턴스가 다른 인스턴스의 락을 지워 세 번째 인스턴스까지 진입하게 된다는 점을 지적해야 한다. 수정안으로 요청마다 고유한 토큰을 값으로 넣고, 값이 같을 때만 지우는 비교 후 삭제를 Lua 스크립트로 원자적으로 실행하는 방법을 제시해야 한다."
+      },
+      {
+        "point": "만료 후 계속되는 작업과 펜싱 토큰",
+        "explanation": "만료 시간을 늘리거나 갱신해도 GC 정지나 네트워크 지연 때문에 락을 잃은 사실을 모른 채 쓰기를 하는 경우를 막을 수 없다는 점을 설명해야 한다. 락을 얻을 때마다 단조 증가하는 번호를 받고, 저장소가 마지막으로 받은 번호보다 작은 번호의 쓰기를 거부하는 방식(예: `UPDATE ... WHERE sku_id = ? AND fence_token < ?`)을 제시해야 한다."
+      },
+      {
+        "point": "비동기 복제의 락 유실",
+        "explanation": "primary에 락을 쓴 직후 복제 전에 장애 조치가 일어나면 새 primary에는 락이 없어 다른 인스턴스가 같은 락을 얻는다는 점을 지적하고, 이 락은 효율을 위한 중복 실행 방지 수준이지 정확성을 보장하지 않는다고 평가해야 한다."
+      },
+      {
+        "point": "결정을 바꿀 조건",
+        "explanation": "정확성이 필수인데 저장소에서 펜싱이나 조건부 갱신을 할 수 없다면 DB 행 락이나 합의 기반 저장소(ZooKeeper, etcd)로 옮기는 기준, 또는 알림을 SKU 키로 발행해 한 컨슈머가 순서대로 처리하게 하면 락 자체가 필요 없어진다는 판단 중 하나 이상을 근거와 함께 제시해야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "무한 대기 루프",
+        "explanation": "`while` 루프에 최대 대기 시간이 없어 락을 못 얻으면 컨슈머 스레드가 계속 묶이고, 처리 지연이 컨슈머 리밸런싱으로 번질 수 있다는 점을 짚는다."
+      },
+      {
+        "point": "락 감시와 연장",
+        "explanation": "Redisson의 감시 스레드처럼 작업 중 만료 시간을 주기적으로 연장하는 방법을 설명하되, 프로세스가 멈추면 연장도 멈춘다는 한계를 함께 쓴다."
+      },
+      {
+        "point": "외부 호출을 락 밖으로",
+        "explanation": "창고 수량 조회를 락 밖에서 하고, 저장할 때 창고 응답의 버전이나 시각을 비교해 더 최신일 때만 쓰면 락 보유 시간이 짧아진다는 점을 제시한다."
+      },
+      {
+        "point": "Redlock 논쟁",
+        "explanation": "여러 독립 Redis 노드에 과반 획득하는 Redlock도 시계와 프로세스 정지 가정에 의존해 펜싱 없이는 정확성을 보장하지 못한다는 비판이 있다는 점을 짚는다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "만료 시간만 넉넉히 늘리면 해결된다는 주장",
+        "explanation": "창고 지연과 GC 정지의 상한은 정해져 있지 않아 어떤 고정값도 겹침을 막지 못하고, 인스턴스가 죽으면 그만큼 오래 다른 작업이 막힌다."
+      },
+      {
+        "point": "만료 시간 없이 락을 걸자는 주장",
+        "explanation": "락을 쥔 인스턴스가 죽으면 그 SKU의 동기화가 사람이 지울 때까지 영원히 멈춘다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "GET 후 DEL로 소유자 확인",
+        "explanation": "값을 읽어 비교한 뒤 따로 삭제하면 두 명령 사이에 락이 만료되고 다른 소유자가 잡을 수 있으므로, 비교와 삭제를 하나의 Lua 스크립트로 묶어야 한다."
+      },
+      {
+        "point": "setIfAbsent와 만료를 따로 설정",
+        "explanation": "이 코드는 한 명령으로 처리하고 있어 문제가 아니지만, 수정 과정에서 `SETNX` 뒤에 `EXPIRE` 를 따로 호출하도록 바꾸면 그 사이 장애로 만료 없는 락이 남는다."
+      }
+    ]
+  },
+  "perspectives": [
+    "결함 발견",
+    "심각도 판단",
+    "수정안의 구체성",
+    "발생 상황 설명"
+  ],
+  "modelAnswer": "### 1. 결함과 사건 순서\n\n**(1) 작업보다 짧은 고정 만료 시간.** 인스턴스 A가 락을 얻고 창고 API를 호출했는데 15초가 걸립니다. 10초에 락이 만료되고, 같은 SKU 알림을 받은 B가 락을 얻어 최신 창고 수량 80을 읽고 저장합니다. 그 뒤 A가 B보다 먼저 시작한 조회의 결과인 이전 수량 100으로 다시 저장합니다. 판매 가능 수량이 실제보다 많아지고 초과 판매가 납니다.\n\n**(2) 소유자 확인 없는 해제.** 위 상황에서 A는 끝나면서 `delete` 로 **B의 락**을 지웁니다. 그러면 C가 바로 락을 얻어 B와 동시에 작업합니다. 한 번의 만료가 연쇄 겹침으로 번집니다.\n\n**(3) 만료 후에도 계속되는 쓰기.** 만료 시간을 연장하는 장치를 붙여도, A가 1~2초 GC 정지에 빠져 연장을 못 하는 사이 락이 만료되면 A는 깨어난 뒤 락을 잃은 줄 모르고 저장합니다. 락만으로는 막을 수 없습니다.\n\n**(4) 비동기 복제의 락 유실.** A가 primary에 락을 쓴 직후 복제 전에 장애 조치가 일어나면, 새 primary에는 락이 없어 B도 락을 얻습니다.\n\n**(5) 무한 대기.** 락을 못 얻으면 최대 대기 시간 없이 50ms마다 재시도하므로 컨슈머 스레드가 묶이고, 처리가 밀리면 컨슈머 리밸런싱까지 생길 수 있습니다.\n\n### 2. 심각도 순서\n\n1. **(1)과 (3): 높음.** 창고 정산 시간대와 GC 정지는 매주 생기는 일이고, 결과가 초과 판매라는 금전 손실입니다. 지금 들어오는 문의와 증상이 맞습니다.\n2. **(2): 높음.** 단독으로는 만료가 있어야 생기지만, 겹침을 두 개에서 여러 개로 키웁니다.\n3. **(4): 중간.** 장애 조치 시점에만 생기므로 빈도는 낮지만 막을 방법이 락 안에는 없습니다.\n4. **(5): 중간.** 데이터는 틀리지 않지만 처리 지연과 리밸런싱을 일으킵니다.\n\n### 3. 락 구현 수정\n\n- 락 값에 요청마다 만든 UUID를 넣고, 해제는 비교 후 삭제를 Lua 스크립트로 원자적으로 실행합니다.\n\n```lua\nif redis.call('GET', KEYS[1]) == ARGV[1] then\n  return redis.call('DEL', KEYS[1])\nend\nreturn 0\n```\n\n- 만료 시간은 평소 작업 시간보다 넉넉히 두고, 작업 중에는 소유자일 때만 만료를 연장하는 감시 작업을 둡니다(Redisson의 감시 기능을 써도 됩니다).\n- 획득 대기에는 최대 시간을 두고, 넘으면 알림을 재시도 대상으로 돌립니다.\n- 창고 API 호출은 락 밖에서 하고, 락 안에서는 짧은 읽기와 쓰기만 합니다.\n\n### 4. 락으로 막을 수 없는 경우와 저장소의 방어\n\nGC 정지, 네트워크 지연, 장애 조치 때문에 \"락을 잃은 줄 모르는 쓰기\"는 락 쪽에서 막을 수 없습니다. 그래서 **저장소가 오래된 쓰기를 거부**하게 만듭니다. 락을 얻을 때 `INCR lock:stock-sync:fence:{skuId}` 로 단조 증가하는 번호를 받고, 저장할 때 `UPDATE stock SET available_quantity = ?, fence_token = ? WHERE sku_id = ? AND fence_token < ?` 로 더 큰 번호일 때만 반영합니다. 영향받은 행이 0이면 늦은 작업이므로 버립니다. 창고 API가 수량의 버전이나 기준 시각을 준다면, 그 값을 비교하는 조건부 갱신이 더 직접적인 방어입니다. 다만 번호를 발급하는 Redis 키도 장애 조치 때 되돌아갈 수 있으므로, 가장 단단한 방법은 창고 쪽 버전처럼 데이터 자체에 붙은 순서를 쓰는 것입니다.\n\n### 5. 보장 수준과 결정을 바꿀 조건\n\n현재 구성은 비동기 복제와 프로세스 정지 때문에 **같은 작업이 겹치는 일을 줄이는 효율용 락**이지, 동시에 한 명만 쓴다는 정확성을 보장하지 않습니다. 정확성은 4번의 조건부 갱신이 맡아야 합니다.\n\n- 알림을 SKU를 키로 발행할 수 있다면, 같은 SKU는 한 파티션에서 순서대로 처리되므로 락을 없애는 쪽을 먼저 택합니다.\n- 저장소에 조건부 갱신을 넣을 수 없는데 정확성이 필수라면, MySQL의 `SELECT ... FOR UPDATE` 처럼 데이터와 같은 곳에 있는 락이나, 합의 기반 저장소(ZooKeeper, etcd)의 락으로 옮깁니다. 지연이 늘고 운영할 구성 요소가 생기는 비용을 감수합니다.\n- 반대로 겹쳐도 다음 동기화가 곧 바로잡는 데이터라면 지금의 Redis 락에 소유자 확인만 더하는 수준으로 충분합니다.",
+  "relatedStudyTopics": [
+    "Redis SET NX PX와 Lua 스크립트 비교 후 삭제",
+    "펜싱 토큰(Martin Kleppmann, How to do distributed locking)",
+    "Redlock 알고리즘과 그 비판",
+    "Redisson 락 감시(watchdog)",
+    "ZooKeeper와 etcd 기반 분산 락"
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "id": "seed-why-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "why",
+  "topic": "kotlin-spring",
+  "difficulty": "middle",
+  "title": "save 호출 없이 UPDATE 가 나가는 구조는 왜 만들어졌는가",
+  "situation": "아래 코드는 `save()` 를 호출하지 않는데도 트랜잭션이 끝날 때 `orders` 테이블에 UPDATE 문이 실행됩니다.\n\n```kotlin\n@Transactional\nfun changeAddress(orderId: Long, address: Address) {\n    val order = orderRepository.findById(orderId).orElseThrow()\n    order.changeAddress(address)\n}\n```\n\nJPA는 엔티티를 바로 DB에 반영하지 않고 영속성 컨텍스트라는 중간 계층에서 관리합니다. 또한 Spring Boot는 `spring.jpa.open-in-view` 를 따로 설정하지 않으면 Open Session In View를 켠 상태로 시작하고, 시작할 때 이를 알리는 경고 로그를 남깁니다.",
+  "requirements": [
+    "JPA가 엔티티를 영속성 컨텍스트에서 관리하도록 설계된 이유를 설명하세요.",
+    "위 코드에서 `save()` 없이 UPDATE 가 실행되는 과정과, 이 방식이 대량 처리에서 드러내는 비용을 설명하세요.",
+    "Open Session In View가 켜져 있을 때 운영 환경에 주는 영향과, 끌 때 달라지는 점을 설명하세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "영속성 컨텍스트의 존재 이유(동일성 보장, 1차 캐시, 쓰기 지연)",
+    "스냅샷 비교 방식 변경 감지의 동작과 대량 처리 비용",
+    "Open Session In View의 커넥션 점유 시간과 지연 로딩 영향"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "영속성 컨텍스트의 설계 이유",
+        "explanation": "객체 세계와 관계형 DB 사이의 간극을 메우기 위해, 한 트랜잭션 안에서 같은 식별자의 엔티티를 같은 객체로 보장(동일성)하고, 이미 읽은 엔티티는 다시 조회하지 않으며(1차 캐시), 변경을 모았다가 flush 시점에 한꺼번에 반영(쓰기 지연)한다는 점을 설명해야 한다. 그 결과 도메인 코드가 객체를 조작하는 것만으로 상태를 바꾸고 저장 호출을 신경 쓰지 않게 된다는 목적까지 연결해야 충족이다."
+      },
+      {
+        "point": "변경 감지 과정",
+        "explanation": "엔티티를 읽을 때 원본 상태의 스냅샷을 보관하고, flush 시점(커밋 직전, 또는 FlushMode AUTO 에서 관련 JPQL 실행 직전)에 관리 중인 엔티티를 스냅샷과 비교해 달라진 엔티티에 UPDATE를 만든다는 과정을 설명해야 한다."
+      },
+      {
+        "point": "대량 처리 비용",
+        "explanation": "관리 엔티티마다 스냅샷을 들고 있어 메모리가 대략 두 배로 들고, flush 때마다 모든 관리 엔티티를 비교하므로 엔티티 수에 비례해 CPU 비용이 커진다는 점과, 대응책으로 일정 건수마다 flush·clear, 읽기 전용 트랜잭션, 벌크 UPDATE 중 하나 이상을 제시해야 한다."
+      },
+      {
+        "point": "Open Session In View의 운영 영향",
+        "explanation": "요청 시작부터 응답이 끝날 때까지 영속성 컨텍스트를 열어 두기 때문에, 처음 DB에 접근하며 얻은 커넥션을 응답 직렬화가 끝날 때까지 붙잡아 커넥션 점유 시간이 길어지고, 서비스 계층 이후의 외부 API 호출이나 느린 응답 전송 동안 커넥션 풀이 고갈될 수 있다는 점을 설명해야 한다. 끄면 트랜잭션이 끝난 뒤 지연 로딩 시 `LazyInitializationException` 이 나므로 필요한 데이터를 트랜잭션 안에서 미리 조회하거나 DTO로 변환해야 한다는 점까지 써야 충족이다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "기본 UPDATE 형태",
+        "explanation": "Hibernate는 기본적으로 바뀐 컬럼만이 아니라 모든 컬럼을 갱신하는 UPDATE를 미리 만들어 재사용하고, `@DynamicUpdate` 로 바뀐 컬럼만 갱신할 수 있다는 점을 설명한다."
+      },
+      {
+        "point": "벌크 연산과 영속성 컨텍스트 불일치",
+        "explanation": "JPQL 벌크 UPDATE는 영속성 컨텍스트를 거치지 않으므로 실행 뒤 이미 로드된 엔티티와 DB 값이 달라질 수 있고, 이후 컨텍스트를 비워야 한다."
+      },
+      {
+        "point": "숨은 쿼리",
+        "explanation": "Open Session In View 상태에서는 컨트롤러나 JSON 직렬화 중 지연 로딩이 일어나 서비스 코드에서 보이지 않는 N+1 쿼리가 생긴다."
+      },
+      {
+        "point": "읽기 전용 트랜잭션 최적화",
+        "explanation": "Spring과 Hibernate 조합에서 `@Transactional(readOnly = true)` 는 flush를 하지 않고 스냅샷 보관을 건너뛰어 조회 비용을 줄인다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "Open Session In View 를 끄면 트랜잭션 범위가 바뀐다는 주장",
+        "explanation": "Open Session In View는 영속성 컨텍스트와 커넥션의 수명을 늘릴 뿐 트랜잭션 경계는 그대로이며, 트랜잭션 밖의 지연 로딩은 쓰기 없이 조회만 한다."
+      },
+      {
+        "point": "변경 감지가 setter 호출을 가로채서 동작한다는 주장",
+        "explanation": "기본 방식은 flush 시점의 스냅샷 비교다. 바이트코드 강화를 켜야 필드 단위 추적이 가능하다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "1차 캐시를 애플리케이션 전역 캐시로 오해함",
+        "explanation": "1차 캐시는 영속성 컨텍스트 하나(보통 트랜잭션 하나)의 범위에서만 유효하다."
+      },
+      {
+        "point": "flush 를 커밋과 같은 것으로 생각함",
+        "explanation": "flush는 SQL을 DB에 보내는 것이고, 커밋하기 전까지는 롤백될 수 있다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 영속성 컨텍스트가 존재하는 이유\n\nJPA의 목표는 개발자가 테이블이 아니라 객체를 다루게 하는 것입니다. 그런데 객체 세계에서는 같은 대상은 같은 객체이고, 객체를 바꾸면 그것으로 끝입니다. 영속성 컨텍스트는 이 기대를 DB 위에서 지키는 중간 계층입니다.\n\n- **동일성 보장:** 한 컨텍스트 안에서 같은 식별자로 읽은 엔티티는 항상 같은 객체입니다. 서로 다른 복사본이 각자 바뀌어 충돌하는 일을 막습니다.\n- **1차 캐시:** 이미 읽은 엔티티는 다시 조회하지 않습니다.\n- **쓰기 지연:** 변경을 모았다가 flush 시점에 SQL로 보내므로, 도메인 코드는 중간에 저장 호출을 신경 쓰지 않아도 됩니다.\n\n그래서 서비스 코드가 `order.changeAddress()` 처럼 도메인 동작만 표현하고, 저장은 트랜잭션 경계가 책임지는 구조가 됩니다.\n\n### 2. 변경 감지 과정과 대량 처리 비용\n\n`findById` 로 엔티티를 읽을 때 Hibernate는 원본 상태의 스냅샷을 함께 보관합니다. 트랜잭션 커밋 직전 flush가 일어나면 관리 중인 모든 엔티티를 스냅샷과 필드 단위로 비교하고, 달라진 엔티티에 UPDATE를 만듭니다. 기본 UPDATE는 모든 컬럼을 갱신하는 미리 만든 문장이며, `@DynamicUpdate` 로 바뀐 컬럼만 갱신하게 바꿀 수 있습니다.\n\n대량 처리에서는 이 구조가 비용이 됩니다. 엔티티 10만 건을 읽으면 객체와 스냅샷을 모두 들고 있어 메모리가 대략 두 배로 들고, flush마다 10만 건을 모두 비교합니다. 일정 건수마다 `flush()` 와 `clear()` 로 컨텍스트를 비우고, 조회만 할 때는 `readOnly = true` 로 스냅샷 보관과 flush를 건너뛰며, 같은 값으로 일괄 변경할 때는 JPQL 벌크 UPDATE를 씁니다. 벌크 UPDATE는 영속성 컨텍스트를 거치지 않으므로 실행 뒤 컨텍스트를 비워 이미 로드된 엔티티와의 불일치를 막아야 합니다.\n\n### 3. Open Session In View의 운영 영향\n\nOpen Session In View는 요청이 시작될 때 영속성 컨텍스트를 열고 응답이 끝날 때 닫습니다. 컨트롤러나 JSON 직렬화 단계에서도 지연 로딩이 되므로 편리하지만, 대가가 있습니다.\n\n- **커넥션 점유 시간 증가:** 처음 DB에 접근하며 얻은 커넥션을 응답이 끝날 때까지 붙잡습니다. 트랜잭션이 끝난 뒤 외부 API를 호출하거나 큰 응답을 느린 클라이언트에 보내는 동안에도 커넥션이 묶여, 트래픽이 몰리면 커넥션 풀이 고갈되고 DB와 무관한 지연이 풀 대기로 번집니다.\n- **숨은 쿼리:** 직렬화 중 지연 로딩이 일어나 서비스 코드에서 보이지 않는 N+1 쿼리가 생깁니다.\n\n끄면 커넥션은 트랜잭션이 끝날 때 반납되어 점유 시간이 짧아집니다. 대신 트랜잭션 밖에서 지연 로딩을 하면 `LazyInitializationException` 이 나므로, 필요한 연관 데이터를 서비스 계층의 트랜잭션 안에서 fetch join 등으로 미리 읽고 DTO로 변환해 반환해야 합니다. 트래픽이 많은 API 서버는 끄는 쪽을 기본으로 두는 경우가 많습니다.",
+  "relatedStudyTopics": [
+    "JPA 영속성 컨텍스트와 1차 캐시",
+    "Hibernate dirty checking과 flush 모드",
+    "Spring open-in-view 설정",
+    "Hibernate @DynamicUpdate",
+    "JPA 대량 처리 flush clear 패턴"
+  ]
+}

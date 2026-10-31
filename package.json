@@ -1,0 +1,91 @@
+{
+  "name": "daily-study",
+  "productName": "Daily Study",
+  "version": "0.1.0",
+  "description": "백엔드 개발자를 위한 매일 서술형 문제 풀이와 LLM 채점 앱",
+  "main": "./out/main/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "validate:seed": "node scripts/validate-seed.mjs",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "cross-spawn": "7.0.6"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "6.0.6",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.1.4",
+    "autoprefixer": "10.6.1",
+    "electron": "44.5.1",
+    "electron-builder": "26.17.0",
+    "electron-vite": "5.0.0",
+    "highlight.js": "11.12.0",
+    "postcss": "8.5.28",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "rehype-highlight": "7.0.2",
+    "remark-gfm": "4.0.1",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "node-gyp": {
+      "undici": "6.29.0"
+    }
+  },
+  "build": {
+    "appId": "dev.dailystudy.app",
+    "productName": "Daily Study",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "skills",
+        "to": "skills"
+      },
+      {
+        "from": "schemas",
+        "to": "schemas"
+      },
+      {
+        "from": "seed",
+        "to": "seed"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

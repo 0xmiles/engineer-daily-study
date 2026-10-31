@@ -1,0 +1,122 @@
+import { useState } from 'react'
+import type { Attempt, Question, ScoredGrading } from '@shared/types'
+import { api, errorMessage, formatDateTime } from '../lib/api'
+import { useNavigate } from '../state/navigation'
+import { useToast } from '../components/toast'
+import { Button, Tabs } from '../components/controls'
+import { Markdown } from '../components/Markdown'
+import { PageContainer } from '../components/PageHeader'
+import { QuestionStatement } from '../components/QuestionStatement'
+import { QuestionFeedbackForm } from '../components/QuestionFeedbackForm'
+import { RubricView } from '../components/RubricView'
+
+type ResultTab = 'weaknesses' | 'strengths' | 'model' | 'compare' | 'rubric' | 'study'
+
+const RESULT_TABS: { value: ResultTab; label: string }[] = [
+  { value: 'weaknesses', label: '부족한 점' },
+  { value: 'strengths', label: '잘한 점' },
+  { value: 'model', label: '모범 답안' },
+  { value: 'compare', label: '내 답안 비교' },
+  { value: 'rubric', label: '채점 상세' },
+  { value: 'study', label: '추가 학습' },
+]
+
+function scoreTone(score: number): string {
+  if (score >= 80) return 'text-emerald-600'
+  if (score >= 60) return 'text-sky-600'
+  return 'text-rose-600'
+}
+
+function Quote({ text }: { text: string }) {
+  if (!text) return null
+  return <blockquote className="mt-2 border-l-4 border-slate-300 pl-3 text-sm text-slate-500 dark:border-slate-700">“{text}”</blockquote>
+}
+
+function ScoreHeader({ grading }: { grading: ScoredGrading }) {
+  const fullCount = grading.requiredCoverage.filter((item) => item.status === 'full').length
+  return (
+    <section className="card p-6">
+      <div className="flex items-end gap-6">
+        <div>
+          <p className={`text-5xl font-bold ${scoreTone(grading.totalScore)}`}>{grading.totalScore}<span className="text-xl text-slate-400"> / 100</span></p>
+          <p className="mt-1 text-sm text-slate-500">필수 항목 {fullCount}/{grading.requiredCoverage.length} 충족 · {formatDateTime(grading.gradedAt)} 채점</p>
+        </div>
+        <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2">
+          {grading.perspectiveScores.map((item) => (
+            <div key={item.perspective}>
+              <div className="flex justify-between text-xs"><span>{item.perspective}</span><span className="font-semibold">{item.score}/10</span></div>
+              <div className="mt-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-2 rounded-full bg-indigo-500" style={{ width: `${item.score * 10}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="mt-5 text-[15px] leading-7">{grading.overallComment}</p>
+    </section>
+  )
+}
+
+function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attempt; question: Question }) {
+  const grading = attempt.grading!
+  switch (tab) {
+    case 'weaknesses':
+      return <ul className="space-y-4">{grading.weaknesses.map((item, index) => (
+        <li key={index} className="card p-4"><p className="font-semibold">{item.summary}</p><Quote text={item.quote} /><p className="mt-2 text-sm"><span className="font-semibold text-indigo-600">보완 방법</span> {item.improvement}</p></li>
+      ))}</ul>
+    case 'strengths':
+      return <ul className="space-y-4">{grading.strengths.map((item, index) => (
+        <li key={index} className="card p-4"><p className="font-semibold">{item.summary}</p><Quote text={item.quote} /></li>
+      ))}</ul>
+    case 'model':
+      return <div className="card p-6"><Markdown text={question.modelAnswer} /></div>
+    case 'compare':
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="card p-5"><p className="label">내 답안</p><Markdown text={attempt.answer} /></div>
+          <div className="card p-5"><p className="label">모범 답안</p><Markdown text={question.modelAnswer} /></div>
+        </div>
+      )
+    case 'rubric':
+      return <RubricView question={question} grading={grading} />
+    case 'study':
+      return <ul className="space-y-3">{grading.studyRecommendations.map((item, index) => (
+        <li key={index} className="card p-4"><p className="font-semibold">{item.keyword}</p><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.reason}</p><p className="mt-2 text-xs text-slate-500">검색어: <code>{item.searchQuery}</code></p></li>
+      ))}</ul>
+  }
+}
+
+export function ResultView({ attempt, question }: { attempt: Attempt; question: Question }) {
+  const [tab, setTab] = useState<ResultTab>('weaknesses')
+  const [isRetrying, setIsRetrying] = useState(false)
+  const navigate = useNavigate()
+  const showToast = useToast()
+
+  const solveAgain = async (): Promise<void> => {
+    setIsRetrying(true)
+    try {
+      navigate({ name: 'attempt', attemptId: await api.startAttempt(question.id, 'practice') })
+    } catch (reason) {
+      showToast({ tone: 'error', title: '다시 풀기를 시작하지 못했습니다', message: errorMessage(reason) })
+      setIsRetrying(false)
+    }
+  }
+
+  return (
+    <PageContainer wide>
+      <details className="card mb-4 p-5">
+        <summary className="cursor-pointer font-semibold">문제 다시 보기: {question.title}</summary>
+        <div className="mt-4"><QuestionStatement question={question} /></div>
+      </details>
+      <ScoreHeader grading={attempt.grading!} />
+      <div className="mt-6"><Tabs tabs={RESULT_TABS} active={tab} onChange={setTab} /></div>
+      <div className="mt-4"><TabContent tab={tab} attempt={attempt} question={question} /></div>
+      <section className="card mt-8 p-5">
+        <p className="mb-3 font-semibold">이 문제는 어땠나요?</p>
+        <QuestionFeedbackForm questionId={question.id} />
+      </section>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="secondary" isLoading={isRetrying} onClick={() => void solveAgain()}>같은 문제 다시 풀기</Button>
+        <Button onClick={() => navigate({ name: 'today' })}>오늘의 문제로</Button>
+      </div>
+    </PageContainer>
+  )
+}

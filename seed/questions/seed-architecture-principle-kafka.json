@@ -1,0 +1,106 @@
+{
+  "id": "seed-architecture-principle-kafka",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "architecture-principle",
+  "topic": "kafka",
+  "difficulty": "senior",
+  "title": "Kafka exactly-once가 실제로 보장하는 범위",
+  "situation": "결제 이벤트를 받아 외부 PG사 승인 API를 호출하고, 결과를 MySQL에 저장한 뒤 `payment-approved` 토픽으로 발행하는 서비스가 있습니다. 설계 회의에서 한 동료가 이렇게 주장했습니다.\n\n> \"프로듀서에 `enable.idempotence=true` 와 `transactional.id` 를 설정하고 컨슈머를 `isolation.level=read_committed` 로 두었으니, Kafka가 exactly-once를 보장합니다. 그러니 PG사 승인 API가 두 번 호출되거나 MySQL에 결제가 두 번 저장되는 일은 없습니다.\"\n\n이 주장이 맞는지 판단하려면 Kafka exactly-once의 의미와 범위를 정확히 알아야 합니다.",
+  "requirements": [
+    "멱등 프로듀서가 어떤 원리로 어떤 중복을 막는지, 그리고 막지 못하는 중복은 무엇인지 설명하세요.",
+    "트랜잭션과 `read_committed` 가 \"읽고 처리하고 발행하는\" 흐름을 어떻게 원자적으로 만드는지, 오프셋 커밋과 좀비 인스턴스 차단을 포함해서 설명하세요.",
+    "Kafka exactly-once의 보장 범위를 정의하고, 동료 주장의 어느 부분이 틀렸는지 근거를 들어 판단하세요.",
+    "이 서비스에서 PG사 승인과 MySQL 저장이 실질적으로 한 번만 반영되게 하려면 어떻게 설계해야 하는지 쓰세요.",
+    "Kafka 트랜잭션을 쓸 때 치르는 비용과 운영상 주의점을 쓰세요."
+  ],
+  "recommendedLength": {
+    "min": 800,
+    "max": 1500
+  },
+  "keyIssues": [
+    "멱등 프로듀서의 프로듀서 ID와 시퀀스 번호 기반 중복 제거 범위",
+    "트랜잭션과 read_committed를 이용한 소비·처리·발행의 원자성",
+    "exactly-once 범위 밖에 있는 외부 시스템 부수효과",
+    "외부 부수효과의 멱등 키 기반 실질적 한 번 처리"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "멱등 프로듀서의 원리와 한계",
+        "explanation": "브로커가 프로듀서 ID와 파티션별 시퀀스 번호를 기록해 재시도로 같은 배치가 다시 오면 버린다는 점을 써야 한다. 그리고 이 보장은 한 프로듀서 세션 안의 재시도에만 해당하므로, 프로듀서 재시작으로 새 ID를 받거나 애플리케이션이 타임아웃 후 `send()` 를 다시 호출하는 중복은 막지 못한다는 점을 써야 한다."
+      },
+      {
+        "point": "트랜잭션과 read_committed의 동작",
+        "explanation": "`transactional.id` 로 트랜잭션 코디네이터에 등록하고, 여러 파티션에 대한 발행과 `sendOffsetsToTransaction` 으로 넘긴 컨슈머 오프셋 커밋을 하나의 트랜잭션으로 묶어 커밋 또는 중단 표시를 기록한다는 점을 써야 한다. `read_committed` 컨슈머는 커밋된 트랜잭션의 메시지만 보고 중단된 메시지는 걸러 낸다는 점, 같은 `transactional.id` 로 새 인스턴스가 초기화하면 epoch가 올라가 이전 인스턴스(좀비)의 쓰기가 거부된다는 점을 써야 한다."
+      },
+      {
+        "point": "보장 범위와 주장 판단",
+        "explanation": "Kafka exactly-once는 Kafka에서 읽고 Kafka에 쓰는 범위에서, 입력 오프셋 진행과 출력 메시지가 함께 반영되거나 함께 버려진다는 보장이라는 점을 정의해야 한다. PG사 API 호출과 MySQL 쓰기는 Kafka 트랜잭션에 참여하지 않으므로, 트랜잭션이 중단되어 같은 입력을 다시 처리하면 이 부수효과가 다시 실행된다는 점을 근거로 동료 주장이 틀렸다고 판단해야 한다."
+      },
+      {
+        "point": "외부 부수효과의 실질적 한 번 처리 설계",
+        "explanation": "결제 ID 같은 업무 키를 멱등 키로 PG사 API에 넘기거나 PG사에 승인 여부를 먼저 조회하는 방법, MySQL에는 결제 ID 고유 제약이나 처리 이력 테이블로 중복 저장을 막고 같은 DB 트랜잭션 안에서 처리 이력(필요하면 오프셋)을 기록하는 방법을 써야 한다. 발행은 DB에 기록한 뒤 별도로 내보내는 구조를 언급하면 인정한다."
+      },
+      {
+        "point": "비용과 운영 주의점",
+        "explanation": "트랜잭션 커밋 왕복과 표시 기록으로 지연이 늘어나 커밋 주기와 처리량을 맞바꾼다는 점, 오래 열린 트랜잭션이 있으면 `read_committed` 컨슈머가 그 지점(last stable offset) 이후를 읽지 못해 지연이 생긴다는 점, `transactional.id` 를 인스턴스마다 안정적으로 부여해야 좀비 차단이 동작한다는 점 중 둘 이상을 써야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "기본값의 버전 차이",
+        "explanation": "Kafka 3.0 이상 프로듀서는 충돌하는 설정이 없으면 멱등성이 기본으로 켜져 있다는 점을 언급한다."
+      },
+      {
+        "point": "Kafka Streams의 exactly-once",
+        "explanation": "Kafka Streams는 `processing.guarantee=exactly_once_v2` 로 같은 트랜잭션 메커니즘을 쓰며, 상태 저장소의 변경 로그도 트랜잭션에 포함된다는 점을 쓴다."
+      },
+      {
+        "point": "read_uncommitted 컨슈머의 존재",
+        "explanation": "하류 컨슈머 중 하나라도 기본값인 `read_uncommitted` 로 읽으면 중단된 트랜잭션의 메시지까지 보므로 보장이 깨진다는 점을 쓴다."
+      },
+      {
+        "point": "전달 보장과 처리 보장의 구분",
+        "explanation": "exactly-once는 메시지가 한 번만 전달된다는 뜻이 아니라, 재전달이 일어나도 결과 상태가 한 번 처리한 것과 같다는 뜻이라는 점을 짚는다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "Kafka 트랜잭션이 DB 트랜잭션과 함께 커밋된다는 주장",
+        "explanation": "Kafka 트랜잭션은 XA 같은 분산 트랜잭션에 참여하지 않으므로 MySQL 커밋과 원자적으로 묶이지 않는다."
+      },
+      {
+        "point": "멱등 프로듀서만으로 처리 전체가 한 번이 된다는 주장",
+        "explanation": "멱등 프로듀서는 발행 재시도의 중복만 막으며, 컨슈머가 같은 입력을 다시 읽어 처리하는 중복은 막지 않는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "컨슈머 오프셋을 따로 커밋",
+        "explanation": "트랜잭션을 쓰면서 컨슈머의 자동 커밋이나 `commitSync()` 로 오프셋을 따로 커밋하면 발행과 오프셋이 분리되어 원자성이 사라진다. 오프셋은 `sendOffsetsToTransaction` 으로 넘겨야 한다."
+      },
+      {
+        "point": "중단된 트랜잭션의 메시지가 로그에서 지워진다고 생각",
+        "explanation": "중단된 메시지도 로그에 남고 중단 표시로 걸러질 뿐이므로 `read_uncommitted` 컨슈머에게는 보인다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 멱등 프로듀서\n\n프로듀서는 브로커에서 프로듀서 ID를 받고, 파티션마다 배치에 시퀀스 번호를 붙여 보냅니다. 브로커는 파티션별 마지막 시퀀스를 기억하다가 응답 유실로 같은 배치가 재시도되어 오면 버립니다. 그래서 재시도 중에도 중복 기록 없이 파티션 안 순서가 유지됩니다.\n\n이 보장은 **한 프로듀서 세션 안의 재시도**에만 해당합니다. 재시작으로 새 프로듀서 ID를 받거나, 애플리케이션이 타임아웃 후 `send()` 를 다시 호출하면 새 메시지가 됩니다. 컨슈머가 같은 입력을 다시 읽어 다시 발행하는 중복도 막지 못합니다.\n\n### 2. 트랜잭션과 read_committed\n\n프로듀서는 `transactional.id` 로 트랜잭션 코디네이터에 등록하고, `beginTransaction()` 후 출력 토픽에 발행합니다. 처리한 입력의 다음 오프셋은 `sendOffsetsToTransaction()` 으로 같은 트랜잭션에 넣습니다. 오프셋 커밋도 `__consumer_offsets` 토픽에 대한 쓰기라서 함께 묶일 수 있습니다. `commitTransaction()` 이면 코디네이터가 관련 파티션에 커밋 표시를, 실패하면 중단 표시를 씁니다. `read_committed` 컨슈머는 커밋된 메시지만 받으므로, 출력 발행과 입력 오프셋 진행이 함께 반영되거나 함께 버려집니다.\n\n같은 `transactional.id` 로 새 인스턴스가 `initTransactions()` 를 호출하면 epoch가 올라갑니다. 네트워크 단절에서 살아 돌아온 이전 인스턴스(좀비)의 쓰기와 커밋은 낮은 epoch라서 거부됩니다.\n\n### 3. 보장 범위와 주장 판단\n\nKafka exactly-once는 **Kafka에서 읽어 Kafka에 쓰는 범위에서 입력 오프셋과 출력 메시지가 원자적으로 반영된다**는 보장입니다. 메시지가 한 번만 전달된다는 뜻이 아니라, 재처리가 일어나도 Kafka 안의 결과가 한 번 처리한 것과 같다는 뜻입니다.\n\n동료의 주장은 틀렸습니다. PG사 API와 MySQL은 Kafka 트랜잭션에 참여하지 않습니다. 승인 API 호출과 MySQL 저장 후 `commitTransaction()` 전에 인스턴스가 죽으면 트랜잭션은 중단되고 오프셋도 진행되지 않습니다. 새 인스턴스는 같은 이벤트를 다시 읽어 **승인 API를 다시 호출하고 MySQL에 다시 저장**합니다. 걸러지는 것은 Kafka 출력의 중복뿐입니다.\n\n### 4. 외부 부수효과의 실질적 한 번 처리\n\n- **PG사 승인**: 결제 ID를 멱등 키로 넘겨 두 번째 요청에 첫 결과를 돌려받습니다. 멱등 키를 지원하지 않으면 호출 전에 승인 여부를 조회합니다.\n- **MySQL 저장**: 결제 ID 고유 제약과 처리 이력 테이블(이벤트 ID)을 같은 DB 트랜잭션으로 기록해 이미 처리한 이벤트는 건너뜁니다.\n- **발행**: `payment-approved` 는 DB에 함께 기록한 뒤 별도 릴레이가 발행하고, 하류는 이벤트 ID로 중복을 거릅니다.\n\n외부 시스템까지 포함한 한 번 처리는 Kafka 설정이 아니라 **최소 한 번 전달과 업무 키 기반 멱등 처리**로 만듭니다.\n\n### 5. 비용과 운영 주의점\n\n- 트랜잭션마다 코디네이터 왕복과 표시 기록이 생겨 지연이 늘어납니다. 크게 묶으면 처리량은 좋아지지만 하류가 결과를 늦게 봅니다.\n- 오래 열린 트랜잭션이 있으면 `read_committed` 컨슈머는 last stable offset 이후를 읽지 못해, `transaction.timeout.ms` 로 중단될 때까지 하류가 멈춥니다.\n- `transactional.id` 가 재시작 후에도 같은 인스턴스에 안정적으로 대응해야 좀비 차단이 의미가 있습니다.\n- 하류 컨슈머 하나라도 기본값인 `read_uncommitted` 로 읽으면 중단된 메시지를 보게 됩니다.",
+  "relatedStudyTopics": [
+    "Kafka 멱등 프로듀서와 시퀀스 번호",
+    "Kafka 트랜잭션 코디네이터와 sendOffsetsToTransaction",
+    "read_committed와 last stable offset",
+    "Kafka Streams exactly_once_v2",
+    "결제 API 멱등 키 설계"
+  ]
+}

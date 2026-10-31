@@ -1,0 +1,90 @@
+{
+  "id": "seed-performance-scaling-dynamodb",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "performance-scaling",
+  "topic": "dynamodb",
+  "difficulty": "junior",
+  "title": "회원별 주문 내역 조회 API의 응답 지연과 읽기 비용 급증",
+  "situation": "고객센터 백오피스의 `회원별 주문 내역` 화면은 Kotlin/Spring Boot API가 DynamoDB `orders` 테이블을 읽어 보여 줍니다. 테이블은 온디맨드 용량 모드이고, 파티션 키는 `orderId` 하나이며 정렬 키는 없습니다. 항목에는 `memberId`, `createdAt`, `status`, `totalAmount` 같은 속성이 있고 평균 크기는 약 1KB입니다.\n\nAPI 구현은 다음과 같습니다.\n\n```kotlin\nsuspend fun findRecentOrders(memberId: String): List<Order> {\n    val orders = mutableListOf<Order>()\n    var lastEvaluatedKey: Map<String, AttributeValue>? = null\n    do {\n        val response = dynamoDbClient.scan(ScanRequest {\n            tableName = \"orders\"\n            filterExpression = \"memberId = :memberId\"\n            expressionAttributeValues = mapOf(\":memberId\" to AttributeValue.S(memberId))\n            exclusiveStartKey = lastEvaluatedKey\n        })\n        orders += response.items.orEmpty().map(::toOrder)\n        lastEvaluatedKey = response.lastEvaluatedKey\n    } while (lastEvaluatedKey != null)\n    return orders.sortedByDescending { it.createdAt }.take(20)\n}\n```\n\n- 출시 당시 테이블에는 약 5만 건이 있었고 응답 시간은 0.1초 안팎이었습니다.\n- 지금은 약 300만 건(약 3GB)이고 하루 4천 건씩 늘어납니다. 응답 시간은 평균 20초를 넘고 타임아웃이 자주 납니다.\n- 상담원 40명이 하루 약 2,000번 이 화면을 엽니다. DynamoDB 읽기 요금은 출시 초기보다 수십 배 늘었습니다.\n- 회원 한 명의 주문은 평균 30건, 많으면 2,000건입니다. 화면은 최근 주문 20건을 먼저 보여 주고 `더 보기` 로 다음 20건을 불러옵니다.\n- 상담원들은 방금 들어온 주문이 몇 초 늦게 보이는 것은 괜찮다고 합니다.",
+  "requirements": [
+    "데이터가 늘수록 응답 시간과 읽기 비용이 함께 늘어나는 이유를 현재 구현이 사용하는 읽기 방식의 동작으로 설명하세요.",
+    "이 화면의 조회를 효율적으로 처리하도록 키 구조나 인덱스를 어떻게 바꿀지, 그리고 어떤 읽기 요청으로 조회할지 제시하세요.",
+    "변경 전과 변경 후 화면을 한 번 열 때 소비하는 읽기 용량을 대략 계산해 비교하세요."
+  ],
+  "recommendedLength": {
+    "min": 300,
+    "max": 600
+  },
+  "keyIssues": [
+    "Scan과 FilterExpression이 테이블 전체 크기만큼 읽기 용량을 소비하는 구조",
+    "회원별 최근 주문 접근 패턴에 맞춘 GSI 파티션 키·정렬 키 설계와 Query",
+    "변경 전후 호출당 읽기 용량 추정"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "Scan과 필터의 동작",
+        "explanation": "Scan은 테이블의 모든 항목을 1MB 단위 페이지로 읽고, FilterExpression은 읽은 뒤에 적용되므로 소비 용량은 반환 건수가 아니라 읽은 데이터 전체 크기로 계산된다는 점을 써야 한다. 그래서 회원 한 명을 조회해도 비용과 페이지 반복 횟수가 테이블 크기에 비례해 늘어난다."
+      },
+      {
+        "point": "접근 패턴에 맞는 인덱스와 Query",
+        "explanation": "`memberId` 를 파티션 키, `createdAt` 을 정렬 키로 하는 GSI를 만들고 `Query` 에 `ScanIndexForward = false`, `Limit = 20` 을 주고 `LastEvaluatedKey` 로 다음 페이지를 이어 읽는 설계를 제시해야 한다. 테이블 자체의 키를 `memberId`·`createdAt` 조합으로 다시 설계하는 답도 인정하되, 그 경우 `orderId` 로 단건을 찾는 기존 조회를 어떻게 유지할지 함께 써야 한다."
+      },
+      {
+        "point": "호출당 읽기 용량 비교",
+        "explanation": "변경 전은 약 3GB를 4KB 단위로 나눈 약 75만 단위에 최종 일관성 읽기 할인(절반)을 적용해 호출당 수십만 단위, 변경 후는 20건×1KB인 20KB를 4KB로 올림한 5단위의 절반인 약 3단위 수준임을 계산해야 한다. 자릿수가 맞으면 충족으로 본다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "측정 근거 확인",
+        "explanation": "`ReturnConsumedCapacity` 응답 값, `ScannedCount` 와 `Count` 의 차이, CloudWatch의 소비 읽기 용량 지표로 원인을 확인하는 방법을 쓴다."
+      },
+      {
+        "point": "GSI의 추가 비용",
+        "explanation": "GSI는 원 테이블에 쓸 때마다 인덱스 쓰기 비용과 저장 비용이 추가되며, 화면에 필요한 속성만 프로젝션하면 이 비용을 줄일 수 있다는 점을 다룬다."
+      },
+      {
+        "point": "GSI의 최종 일관성",
+        "explanation": "GSI는 강한 일관성 읽기를 지원하지 않지만 상담원이 몇 초 지연을 허용하므로 이 요구에는 문제가 없다는 점을 확인한다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "Limit으로 해결된다는 주장",
+        "explanation": "Scan의 `Limit` 은 필터 적용 전에 읽을 항목 수를 제한하므로, 조건에 맞는 주문이 비거나 일부만 나온다. 소비 용량 문제도 그대로다."
+      },
+      {
+        "point": "병렬 Scan으로 해결된다는 주장",
+        "explanation": "세그먼트를 나눈 병렬 Scan은 응답 시간을 줄일 수 있어도 읽는 데이터 총량은 같으므로 비용이 줄지 않고 순간 부하는 더 커진다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "캐시 추가를 근본 해결로 보는 것",
+        "explanation": "결과를 캐시해도 캐시가 비어 있는 첫 조회는 여전히 테이블 전체를 읽는다. 접근 패턴에 맞는 키가 없다는 근본 원인은 남는다."
+      },
+      {
+        "point": "기존 데이터 반영 시간을 잊는 것",
+        "explanation": "기존 테이블에 GSI를 추가하면 300만 건을 인덱스에 채우는 동안 시간이 걸리므로, 인덱스가 활성 상태가 된 뒤에 조회를 전환해야 한다."
+      }
+    ]
+  },
+  "modelAnswer": "### 1. 응답 시간과 비용이 함께 늘어나는 이유\n\n현재 구현은 `Scan` 으로 테이블 전체를 1MB 페이지씩 끝까지 읽습니다. `FilterExpression` 은 항목을 읽은 **뒤에** 적용되므로, 결과가 30건이어도 소비 용량은 읽은 데이터 3GB 전체로 계산됩니다. 테이블이 60배 커지자 페이지 반복 횟수와 읽기 용량이 같은 비율로 늘었습니다. `ReturnConsumedCapacity` 와 `ScannedCount`(약 300만)·`Count`(약 30)의 차이로 확인할 수 있습니다.\n\n### 2. 키와 인덱스 변경\n\n`memberId` 를 파티션 키, `createdAt` 을 정렬 키로 하는 GSI를 추가하고, 화면에 필요한 속성만 프로젝션합니다. 조회는 `Query(memberId = :memberId)` 에 `ScanIndexForward = false`, `Limit = 20` 을 주고, `더 보기` 는 `LastEvaluatedKey` 를 다음 요청의 `ExclusiveStartKey` 로 넘깁니다. GSI는 최종 일관성 읽기만 지원하지만 몇 초 지연은 허용되므로 문제없습니다. 기존 데이터가 인덱스에 다 채워져 활성 상태가 된 뒤 전환합니다.\n\n### 3. 읽기 용량 비교\n\n- 변경 전: 3GB ÷ 4KB ≈ 75만 단위, 최종 일관성 읽기로 절반이면 호출당 약 37만 단위입니다. 하루 2,000번이면 7억 단위가 넘습니다.\n- 변경 후: 20건 × 1KB = 20KB → 4KB 단위 5개의 절반, 약 3단위입니다.\n\nGSI 쓰기 비용이 하루 4천 건만큼 추가되지만 읽기 절감에 비하면 무시할 수준입니다.",
+  "relatedStudyTopics": [
+    "DynamoDB Scan과 Query의 용량 소비 계산",
+    "DynamoDB FilterExpression과 Limit의 적용 순서",
+    "DynamoDB 글로벌 보조 인덱스 프로젝션",
+    "DynamoDB Query 페이지네이션과 LastEvaluatedKey"
+  ],
+  "perspectives": [
+    "측정 근거",
+    "용량 추정",
+    "단계별 대응",
+    "비용 고려"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "id": "seed-comparison-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "comparison",
+  "topic": "mysql-postgresql",
+  "difficulty": "junior",
+  "title": "같은 인덱스를 타는데 조회 컬럼에 따라 달라지는 읽기 비용",
+  "situation": "MySQL 8.0 InnoDB에 다음 테이블과 인덱스가 있습니다.\n\n```sql\nCREATE TABLE orders (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\n  user_id BIGINT NOT NULL,\n  status VARCHAR(20) NOT NULL,\n  amount DECIMAL(12, 2) NOT NULL,\n  created_at DATETIME NOT NULL,\n  INDEX idx_user_created (user_id, created_at)\n);\n```\n\n두 쿼리는 모두 `idx_user_created` 를 사용합니다.\n\n```sql\n-- 쿼리 A\nSELECT id, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\n-- 쿼리 B\nSELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\n```\n\nInnoDB의 클러스터드 인덱스, 세컨더리 인덱스, 커버링 인덱스를 비교하고, PostgreSQL의 테이블 저장 구조와 어떻게 다른지 설명하세요.",
+  "requirements": [
+    "InnoDB에서 클러스터드 인덱스와 세컨더리 인덱스가 각각 무엇을 저장하는지, 세컨더리 인덱스로 행 전체를 찾는 과정과 함께 설명하세요.",
+    "쿼리 A와 B 중 인덱스만 읽고 끝나는 쿼리는 어느 것이며, 그 이유는 무엇인지 쓰세요.",
+    "PostgreSQL에서는 테이블과 인덱스의 관계가 어떻게 다른지, 그 차이가 인덱스만 읽는 조회에 어떤 조건을 더하는지 쓰세요."
+  ],
+  "recommendedLength": {
+    "min": 300,
+    "max": 600
+  },
+  "keyIssues": [
+    "InnoDB 클러스터드 인덱스와 세컨더리 인덱스의 리프 내용 차이",
+    "세컨더리 인덱스 리프의 기본 키를 이용한 커버링 인덱스 판단",
+    "PostgreSQL 힙 테이블과 인덱스 전용 스캔의 가시성 맵 조건"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "두 인덱스의 저장 내용과 조회 과정",
+        "explanation": "클러스터드 인덱스는 기본 키 순서의 B+트리이며 리프에 행 전체가 들어 있다. 세컨더리 인덱스의 리프에는 인덱스 컬럼과 기본 키 값만 있으므로, 행 전체가 필요하면 기본 키로 클러스터드 인덱스를 한 번 더 탐색해야 한다는 점을 설명해야 한다."
+      },
+      {
+        "point": "커버링 판단",
+        "explanation": "쿼리 A가 인덱스만으로 끝난다. `idx_user_created` 의 리프에 `user_id`, `created_at` 과 기본 키 `id` 가 함께 들어 있어 필요한 컬럼을 모두 얻을 수 있기 때문이다. 쿼리 B는 `status`, `amount` 때문에 20건마다 클러스터드 인덱스를 다시 읽는다. `id` 가 인덱스에 명시되지 않았는데도 커버된다는 이유를 써야 충족이다."
+      },
+      {
+        "point": "PostgreSQL의 구조 차이",
+        "explanation": "PostgreSQL 테이블은 정렬되지 않은 힙이고, 기본 키를 포함한 모든 인덱스가 힙의 행 위치(TID)를 가리키는 세컨더리 인덱스라는 점을 써야 한다. 인덱스 전용 스캔은 가시성 맵에서 해당 페이지가 모두 보이는 상태로 표시되어 있을 때만 힙 방문을 건너뛸 수 있다는 조건을 언급해야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "기본 키 크기의 영향",
+        "explanation": "InnoDB 세컨더리 인덱스마다 기본 키가 복사되므로 큰 기본 키나 무작위 UUID 기본 키는 모든 세컨더리 인덱스를 키우고 페이지 분할을 늘린다."
+      },
+      {
+        "point": "EXPLAIN 확인 방법",
+        "explanation": "MySQL EXPLAIN의 Extra에 `Using index` 가 나오면 커버링이고, PostgreSQL은 `Index Only Scan` 과 `Heap Fetches` 수치로 확인한다."
+      },
+      {
+        "point": "PostgreSQL INCLUDE 절",
+        "explanation": "PostgreSQL 11부터 `INCLUDE` 로 검색 키가 아닌 컬럼을 인덱스 리프에 실어 커버링 인덱스를 만들 수 있다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "세컨더리 인덱스가 물리 주소를 가리킨다는 주장",
+        "explanation": "InnoDB 세컨더리 인덱스는 페이지 주소가 아니라 기본 키 값을 저장한다. 그래서 행이 다른 페이지로 옮겨져도 세컨더리 인덱스는 바뀌지 않는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "PostgreSQL CLUSTER 명령 오해",
+        "explanation": "`CLUSTER` 는 한 번 정렬해 다시 쓰는 작업일 뿐 이후의 삽입·갱신 순서를 유지하지 않으므로 InnoDB의 클러스터드 인덱스와 같지 않다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 클러스터드 인덱스와 세컨더리 인덱스\n\nInnoDB 테이블은 기본 키 순서의 B+트리 자체이며, 이것이 클러스터드 인덱스입니다. 리프에 행 전체가 들어 있습니다. 세컨더리 인덱스의 리프에는 인덱스 컬럼과 그 행의 기본 키 값만 있습니다. 그래서 세컨더리 인덱스로 조건에 맞는 항목을 찾은 뒤, 행 전체가 필요하면 기본 키로 클러스터드 인덱스를 다시 탐색합니다.\n\n### 2. 인덱스만 읽는 쿼리\n\n쿼리 A입니다. `idx_user_created` 리프에는 `user_id`, `created_at` 과 기본 키 `id` 가 들어 있어 필요한 값을 인덱스에서 모두 얻습니다. 이런 경우를 커버링 인덱스라 하고, EXPLAIN의 Extra에 `Using index` 가 나옵니다. 쿼리 B는 `status`, `amount` 가 없으므로 20건마다 클러스터드 인덱스를 다시 읽습니다.\n\n### 3. PostgreSQL과의 차이\n\nPostgreSQL 테이블은 정렬되지 않은 힙이고, 기본 키 인덱스를 포함한 모든 인덱스가 힙의 행 위치를 가리키는 세컨더리 인덱스입니다. 인덱스에 필요한 컬럼이 다 있어도 행이 보이는지 판단하려면 힙을 확인해야 하므로, 가시성 맵에서 페이지 전체가 보이는 상태로 표시된 경우에만 힙 방문을 건너뜁니다. PostgreSQL 11부터는 `INCLUDE` 절로 조회 컬럼을 인덱스에 실을 수 있습니다.",
+  "relatedStudyTopics": [
+    "InnoDB 클러스터드 인덱스 구조",
+    "커버링 인덱스와 EXPLAIN Using index",
+    "PostgreSQL Index Only Scan과 가시성 맵",
+    "PostgreSQL 인덱스 INCLUDE 절"
+  ]
+}

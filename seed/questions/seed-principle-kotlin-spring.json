@@ -1,0 +1,91 @@
+{
+  "id": "seed-principle-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "principle",
+  "topic": "kotlin-spring",
+  "difficulty": "junior",
+  "title": "@Transactional 을 붙였는데 기대와 다르게 동작한 세 코드",
+  "situation": "Kotlin/Spring Boot 3, Spring Data JPA 프로젝트입니다. 아래 세 코드에는 모두 `@Transactional` 이 붙어 있지만 개발자가 기대한 대로 동작하지 않았습니다.\n\n(가) 회원마다 쿠폰을 발급하고, 한 회원의 발급이 실패하면 그 회원의 변경만 모두 롤백되기를 기대했습니다.\n\n```kotlin\n@Service\nclass CouponService(private val couponRepository: CouponRepository) {\n    fun issueAll(memberIds: List<Long>) {\n        memberIds.forEach { issue(it) }\n    }\n\n    @Transactional\n    fun issue(memberId: Long) {\n        couponRepository.save(Coupon(memberId))\n        couponRepository.save(CouponHistory(memberId)) // 여기서 예외가 날 수 있음\n    }\n}\n```\n\n(나) `kotlin-spring` 컴파일러 플러그인을 적용하지 않은 모듈에 있는 코드입니다. 호출하자마자 `NullPointerException` 이 났습니다.\n\n```kotlin\n@Service\nopen class PointService(private val pointRepository: PointRepository) {\n    @Transactional\n    fun use(memberId: Long, amount: Long) {\n        pointRepository.decrease(memberId, amount)\n    }\n}\n```\n\n(다) 파일에 잘못된 행이 있으면 저장한 주문이 모두 롤백되기를 기대했지만, 예외가 난 뒤에도 주문이 DB에 남았습니다.\n\n```kotlin\n@Transactional\nfun importOrders(file: Path) {\n    orderRepository.saveAll(parse(file))\n    if (hasInvalidRow(file)) throw java.io.IOException(\"잘못된 행이 있습니다\")\n}\n```",
+  "requirements": [
+    "Spring이 `@Transactional` 을 메서드에 적용하는 구조를 설명하세요.",
+    "(가), (나), (다)가 각각 왜 기대와 다르게 동작했는지 설명하세요.",
+    "각 코드를 기대대로 동작하게 고치는 방법을 쓰세요."
+  ],
+  "recommendedLength": {
+    "min": 300,
+    "max": 600
+  },
+  "keyIssues": [
+    "@Transactional 프록시 구조와 자기 호출",
+    "Kotlin의 final 기본값과 CGLIB 프록시",
+    "checked 예외에 대한 기본 롤백 규칙"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "프록시 구조",
+        "explanation": "Spring이 Bean 대신 프록시를 주입하고, 외부에서 프록시의 메서드를 호출할 때 프록시가 트랜잭션을 시작한 뒤 실제 객체의 메서드를 부르고 결과에 따라 커밋하거나 롤백한다는 점을 설명해야 한다. Spring Boot는 기본적으로 클래스를 상속한 CGLIB 프록시를 만든다는 점까지 쓰면 충족이다."
+      },
+      {
+        "point": "(가)와 (나)가 프록시를 거치지 않는 이유",
+        "explanation": "(가)는 `issueAll` 이 `this.issue()` 로 자기 자신을 부르므로 프록시를 거치지 않아 트랜잭션이 없고, 각 `save` 가 리포지토리의 자체 트랜잭션으로 따로 커밋된다. (나)는 Kotlin 메서드가 기본적으로 final 이라 CGLIB 프록시가 `use` 를 재정의하지 못하고, 호출이 프록시 객체 자신의 메서드로 실행되는데 프록시 객체는 생성자를 거치지 않아 `pointRepository` 필드가 null이라 예외가 난다. 두 설명이 모두 있어야 충족이다."
+      },
+      {
+        "point": "(다)의 롤백 규칙과 수정 방법",
+        "explanation": "기본 롤백 규칙은 `RuntimeException` 과 `Error` 에만 롤백하고, `IOException` 같은 Java checked 예외는 커밋한다는 점을 설명해야 한다. Kotlin에는 checked 예외 구분이 없지만 롤백 규칙은 Java 예외 계층을 따른다는 점, 고치는 방법으로 `@Transactional(rollbackFor = [Exception::class])` 나 unchecked 예외로 감싸 던지기를 제시하면 충족이다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "자기 호출 해결책의 선택지",
+        "explanation": "트랜잭션 메서드를 다른 Bean으로 분리하는 방법을 기본으로 제시하고, `TransactionTemplate` 으로 회원별 트랜잭션을 명시하는 방법도 언급한다."
+      },
+      {
+        "point": "kotlin-spring 플러그인",
+        "explanation": "all-open 계열인 `kotlin-spring` 플러그인이 `@Component`, `@Transactional` 등이 붙은 클래스와 그 멤버를 자동으로 open 으로 만든다는 점을 설명한다."
+      },
+      {
+        "point": "private 메서드",
+        "explanation": "private 메서드도 프록시가 가로챌 수 없어 같은 이유로 트랜잭션이 적용되지 않는다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "Kotlin에는 checked 예외가 없으니 모든 예외에 롤백된다는 주장",
+        "explanation": "롤백 여부는 Kotlin 문법이 아니라 예외 클래스가 `RuntimeException` 을 상속하는지로 정해진다."
+      },
+      {
+        "point": "자기 호출에 전파 옵션을 바꾸면 된다는 주장",
+        "explanation": "`REQUIRES_NEW` 같은 전파 설정도 프록시를 거쳐야 적용되므로 자기 호출에서는 아무 효과가 없다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "(가)에서 아무것도 저장되지 않는다고 생각함",
+        "explanation": "트랜잭션이 없을 뿐 각 `save` 는 리포지토리의 기본 트랜잭션으로 커밋되므로, 예외 직전까지의 변경이 남는다."
+      },
+      {
+        "point": "예외를 잡아서 삼켜도 롤백된다고 생각함",
+        "explanation": "메서드 안에서 예외를 잡고 밖으로 던지지 않으면 프록시는 정상 종료로 보고 커밋한다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 적용 구조\n\nSpring은 `@Transactional` 이 있는 Bean 대신 프록시(Spring Boot 기본은 클래스를 상속한 CGLIB 프록시)를 주입합니다. 외부에서 프록시의 메서드를 부르면 프록시가 트랜잭션을 시작하고 실제 객체의 메서드를 호출한 뒤, 정상 종료면 커밋하고 롤백 대상 예외면 롤백합니다. 즉 **프록시를 거친 호출에만** 트랜잭션이 적용됩니다.\n\n### 2. 기대와 다르게 동작한 이유\n\n- **(가)** `issueAll` 안의 `issue()` 는 `this.issue()` 이므로 프록시를 거치지 않습니다. 두 `save` 가 리포지토리 기본 트랜잭션으로 따로 커밋되어, 두 번째에서 예외가 나도 첫 번째는 남습니다.\n- **(나)** Kotlin 메서드는 기본이 final 이라 CGLIB가 `use` 를 재정의하지 못합니다. 호출이 프록시 객체 자신의 `use` 로 실행되는데, 프록시 객체는 생성자를 거치지 않아 `pointRepository` 가 null입니다.\n- **(다)** 기본 롤백 규칙은 `RuntimeException` 과 `Error` 에만 롤백합니다. `IOException` 은 Java의 checked 예외라 커밋됩니다. Kotlin에 checked 예외 문법이 없어도 규칙은 Java 예외 계층을 따릅니다.\n\n### 3. 고치는 방법\n\n- **(가)** `issue` 를 별도 Bean(예: `CouponIssuer`)으로 옮겨 프록시를 통해 부르거나, `TransactionTemplate` 으로 회원마다 트랜잭션을 엽니다.\n- **(나)** `kotlin-spring` 플러그인을 적용해 `@Service` 클래스와 멤버를 자동으로 open 으로 만들거나, 메서드에 `open` 을 붙입니다.\n- **(다)** `@Transactional(rollbackFor = [Exception::class])` 를 지정하거나 `RuntimeException` 계열 예외를 던집니다.",
+  "relatedStudyTopics": [
+    "Spring AOP 프록시와 자기 호출",
+    "CGLIB 프록시와 final 메서드",
+    "Kotlin all-open(kotlin-spring) 컴파일러 플러그인",
+    "Spring @Transactional rollbackFor 기본 규칙",
+    "TransactionTemplate"
+  ]
+}

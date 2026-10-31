@@ -1,0 +1,94 @@
+{
+  "title": "QuestionContent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "category",
+    "topic",
+    "difficulty",
+    "title",
+    "situation",
+    "requirements",
+    "recommendedLength",
+    "keyIssues",
+    "rubric",
+    "perspectives",
+    "modelAnswer",
+    "relatedStudyTopics"
+  ],
+  "properties": {
+    "format": { "type": "string", "enum": ["scenario", "concept"] },
+    "category": {
+      "type": "string",
+      "enum": [
+        "incident-diagnosis",
+        "design-tradeoff",
+        "consistency-concurrency",
+        "performance-scaling",
+        "migration-legacy",
+        "code-review",
+        "observability-operations",
+        "principle",
+        "why",
+        "comparison",
+        "cross-layer",
+        "architecture-principle"
+      ]
+    },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "kotlin-spring",
+        "kafka",
+        "mysql-postgresql",
+        "dynamodb",
+        "distributed-systems",
+        "cache",
+        "api-architecture"
+      ]
+    },
+    "difficulty": { "type": "string", "enum": ["junior", "middle", "senior"] },
+    "title": { "type": "string" },
+    "situation": { "type": "string" },
+    "requirements": { "type": "array", "items": { "type": "string" } },
+    "recommendedLength": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer" },
+        "max": { "type": "integer" }
+      }
+    },
+    "keyIssues": { "type": "array", "items": { "type": "string" } },
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "bonus", "deductions", "commonMistakes"],
+      "properties": {
+        "required": { "$ref": "#/definitions/rubricItems" },
+        "bonus": { "$ref": "#/definitions/rubricItems" },
+        "deductions": { "$ref": "#/definitions/rubricItems" },
+        "commonMistakes": { "$ref": "#/definitions/rubricItems" }
+      }
+    },
+    "perspectives": { "type": "array", "items": { "type": "string" } },
+    "modelAnswer": { "type": "string" },
+    "relatedStudyTopics": { "type": "array", "items": { "type": "string" } }
+  },
+  "definitions": {
+    "rubricItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["point", "explanation"],
+        "properties": {
+          "point": { "type": "string" },
+          "explanation": { "type": "string" }
+        }
+      }
+    }
+  }
+}

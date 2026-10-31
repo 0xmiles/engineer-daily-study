@@ -1,0 +1,82 @@
+{
+  "id": "seed-principle-cache",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "concept",
+  "category": "principle",
+  "topic": "cache",
+  "difficulty": "junior",
+  "title": "캐시와 DB 사이에서 읽기·쓰기를 처리하는 세 가지 방식",
+  "situation": "캐시를 DB 앞에 두는 방식은 읽기와 쓰기를 누가, 어떤 순서로 처리하느냐에 따라 cache-aside, write-through, write-behind(write-back이라고도 부릅니다)로 나뉩니다.\n\n예를 들어 회원 프로필 조회, 상품 조회수 집계, 결제 내역 저장처럼 성격이 다른 데이터에 캐시를 붙이려고 할 때, 세 방식 중 무엇을 고르느냐에 따라 응답 속도와 데이터 안전성이 달라집니다.",
+  "requirements": [
+    "세 방식 각각에서 읽기 요청과 쓰기 요청이 캐시와 DB를 어떤 순서로 거치는지 설명하세요.",
+    "세 방식의 장단점을 데이터 일관성, 쓰기 지연, 데이터 유실 위험 측면에서 비교하세요.",
+    "위의 세 데이터(회원 프로필 조회, 상품 조회수 집계, 결제 내역 저장)에 각각 어떤 방식이 맞는지 근거와 함께 고르세요."
+  ],
+  "recommendedLength": {
+    "min": 300,
+    "max": 600
+  },
+  "keyIssues": [
+    "cache-aside의 지연 적재 동작",
+    "write-through의 동기 이중 쓰기",
+    "write-behind의 비동기 쓰기와 유실 위험"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "세 방식의 읽기·쓰기 경로",
+        "explanation": "cache-aside는 애플리케이션이 캐시를 먼저 보고 없으면 DB에서 읽어 캐시에 넣으며 쓰기 때는 DB를 갱신하고 캐시를 지운다, write-through는 쓰기 때 캐시와 DB를 동기로 함께 갱신한다, write-behind는 캐시에만 쓰고 DB 반영은 나중에 비동기로 모아서 한다는 세 경로를 모두 맞게 설명해야 한다."
+      },
+      {
+        "point": "장단점 비교",
+        "explanation": "write-through는 캐시와 DB가 일치하기 쉽지만 쓰기마다 두 곳을 거쳐 쓰기 지연이 늘고, write-behind는 쓰기가 빠르고 DB 부하를 줄이지만 DB 반영 전에 캐시가 죽으면 데이터가 유실되며, cache-aside는 구현이 단순하고 캐시 장애에도 DB로 동작하지만 첫 조회가 느리고 오래된 값이 남을 수 있다는 점을 비교해야 한다."
+      },
+      {
+        "point": "데이터별 선택과 근거",
+        "explanation": "결제 내역에는 유실 위험이 있는 write-behind를 쓰면 안 된다는 판단이 반드시 있어야 한다. 조회수 집계에는 일부 유실을 감수하고 쓰기 부하를 줄이는 write-behind, 회원 프로필에는 cache-aside가 맞다는 식으로 데이터 성격(유실 허용 여부, 읽기·쓰기 비율)을 근거로 골라야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "write-through의 불필요한 캐시 적재",
+        "explanation": "쓴 데이터가 다시 읽히지 않아도 캐시에 들어가므로 만료 시간을 함께 두어야 메모리를 아낀다."
+      },
+      {
+        "point": "read-through와의 구분",
+        "explanation": "read-through는 캐시 계층이 미스 때 DB 읽기를 대신 해 주는 방식이고, cache-aside는 애플리케이션이 직접 처리한다는 차이를 짚는다."
+      },
+      {
+        "point": "write-behind의 쓰기 병합",
+        "explanation": "같은 키의 여러 쓰기를 마지막 값 하나로 합쳐 DB에 쓰므로 조회수처럼 자주 바뀌는 값에서 효과가 크다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "write-through가 캐시와 DB의 원자성을 보장한다는 주장",
+        "explanation": "두 저장소에 차례로 쓰는 것이므로 중간에 실패하면 한쪽만 반영될 수 있다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "cache-aside 쓰기 때 캐시를 갱신한다고 설명",
+        "explanation": "일반적인 cache-aside는 쓰기 때 캐시 값을 새로 쓰기보다 삭제해서, 다음 읽기가 DB의 최신 값을 다시 적재하게 한다."
+      }
+    ]
+  },
+  "perspectives": [
+    "정확성",
+    "깊이",
+    "연결",
+    "실무 적용"
+  ],
+  "modelAnswer": "### 1. 읽기·쓰기 경로\n\n- **cache-aside:** 읽을 때 애플리케이션이 캐시를 먼저 보고, 없으면 DB에서 읽어 캐시에 넣은 뒤 반환합니다. 쓸 때는 DB를 갱신하고 캐시의 해당 키를 지웁니다.\n- **write-through:** 쓸 때 캐시와 DB를 동기로 함께 갱신하고 둘 다 끝나야 응답합니다. 읽기는 캐시에서 합니다.\n- **write-behind:** 쓸 때 캐시에만 쓰고 바로 응답합니다. DB 반영은 나중에 비동기로 모아서 합니다.\n\n### 2. 장단점\n\n- **일관성:** write-through가 가장 맞추기 쉽습니다. cache-aside는 삭제 시점에 따라 오래된 값이 잠시 남을 수 있고, write-behind는 DB가 늘 캐시보다 늦습니다.\n- **쓰기 지연:** write-through는 두 곳을 거치므로 가장 느리고, write-behind는 캐시에만 쓰므로 가장 빠르며 같은 키의 쓰기를 합쳐 DB 부하도 줄입니다.\n- **유실 위험:** write-behind는 DB 반영 전에 캐시가 죽으면 그 쓰기가 사라집니다. 나머지 둘은 DB가 원본이라 캐시가 죽어도 데이터는 남습니다. 대신 cache-aside는 첫 조회가 캐시 미스라 느립니다.\n\n### 3. 데이터별 선택\n\n- **회원 프로필:** 읽기가 많고 쓰기가 드뭅니다. cache-aside로 자주 읽히는 것만 캐시에 올립니다.\n- **조회수 집계:** 쓰기가 매우 많고 몇 건 유실돼도 괜찮습니다. write-behind로 모아서 반영합니다.\n- **결제 내역:** 유실이 허용되지 않으므로 write-behind는 쓰면 안 됩니다. DB에 먼저 확실히 저장하고, 조회 성능이 필요하면 cache-aside로 읽기만 캐시합니다.",
+  "relatedStudyTopics": [
+    "cache-aside와 read-through 비교",
+    "write-through와 write-behind 캐시",
+    "Redis를 이용한 카운터 집계와 주기적 DB 반영",
+    "캐시 만료 시간 설계"
+  ]
+}

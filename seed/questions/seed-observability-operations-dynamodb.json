@@ -1,0 +1,88 @@
+{
+  "id": "seed-observability-operations-dynamodb",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-10-31T00:00:00.000Z",
+  "variantOf": null,
+  "format": "scenario",
+  "category": "observability-operations",
+  "topic": "dynamodb",
+  "difficulty": "middle",
+  "title": "용량은 남아 보이는데 간헐적으로 쓰로틀링되는 재고 테이블",
+  "situation": "상품 재고 서비스는 DynamoDB 테이블 `inventory`(파티션 키 `skuId`)를 프로비저닝 모드로 씁니다. 쓰기 용량은 4,000 WCU로 잡혀 있고, 자동 확장은 사용률 70%를 목표로 설정되어 있습니다. GSI는 두 개입니다.\n\n- `warehouse-index`: 파티션 키 `warehouseId`(창고는 12곳)\n- `status-index`: 파티션 키 `stockStatus`(값은 `IN_STOCK`, `LOW`, `OUT` 세 가지)\n\n최근 두 주 동안 다음이 관찰되었습니다.\n\n- 애플리케이션 로그에 `ProvisionedThroughputExceededException` 이 하루 수십 번, 한 번에 수 초씩 몰려 나옵니다. SDK 재시도로 대부분 성공하지만 그 시각에 재고 차감 API의 p99 응답 시간이 80ms에서 2초 이상으로 튑니다.\n- 팀이 보는 대시보드는 테이블의 `ConsumedWriteCapacityUnits` 를 5분 단위로 보여 주는데, 쓰로틀이 난 시각에도 사용률이 40% 안팎입니다.\n- 쓰로틀이 몰리는 시각은 한정 판매 시작 시각이나 창고 입고 일괄 반영 배치 시각과 겹치는 날도 있고, 겹치지 않는 날도 있습니다.\n- 현재 알람은 없고, 고객센터 문의로 알게 됩니다.",
+  "requirements": [
+    "테이블 사용률이 40%로 보이는데도 쓰로틀링이 나는 원인 후보를 나열하세요.",
+    "원인 후보를 서로 구분하려면 어떤 지표와 도구를 어떤 단위로 봐야 하는지 설계하세요.",
+    "사람을 부르는 알람과 원인 진단용 지표를 어떻게 나눌지 제시하세요."
+  ],
+  "recommendedLength": {
+    "min": 500,
+    "max": 1000
+  },
+  "keyIssues": [
+    "5분 평균 소비 용량이 순간 피크와 파티션 편중을 가리는 문제",
+    "GSI 쓰기 용량 부족이 기본 테이블 쓰기를 쓰로틀하는 구조",
+    "CloudWatch Contributor Insights로 핫 키 식별",
+    "쓰로틀 원인 지표와 사용자 영향 알람의 분리"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "원인 후보의 폭",
+        "explanation": "최소 세 가지를 들어야 한다. (1) 5분 평균에 가려진 초 단위 순간 피크, (2) 특정 skuId에 쓰기가 몰리는 핫 파티션(파티션당 초당 1,000 WCU 한계), (3) GSI의 쓰기 용량 부족이나 GSI 파티션 키 편중으로 인한 기본 테이블 쓰기 쓰로틀. 자동 확장이 수 분 단위로 반응해 급증을 따라가지 못하는 점도 인정한다."
+      },
+      {
+        "point": "GSI 지표를 따로 보기",
+        "explanation": "GSI는 기본 테이블과 별도로 용량과 쓰로틀 지표를 가지며(GlobalSecondaryIndexName 차원), GSI가 쓰로틀되면 기본 테이블 쓰기도 실패한다는 점과, 카디널리티가 3인 status-index가 편중 후보라는 점을 짚어야 한다."
+      },
+      {
+        "point": "측정 단위와 도구",
+        "explanation": "1분 단위로 Sum을 초 수로 나눠 초당 소비량을 보고, 테이블·GSI별 WriteThrottleEvents와 작업별 ThrottledRequests를 함께 봐야 한다. 핫 키는 CloudWatch Contributor Insights for DynamoDB로 가장 많이 접근되거나 쓰로틀된 키를 확인하거나, 애플리케이션에서 쓰로틀 예외가 난 키를 로그로 남기는 방법을 제시해야 한다."
+      },
+      {
+        "point": "알람 계층 분리",
+        "explanation": "사람을 부르는 알람은 재고 차감 API의 p99 응답 시간이나 재시도 후 최종 실패율 같은 사용자 영향 지표로 걸고, 쓰로틀 이벤트·소비 용량·Contributor Insights는 진단용 대시보드나 낮은 등급 경고로 둔다는 구분을 제시해야 한다."
+      }
+    ],
+    "bonus": [
+      {
+        "point": "애플리케이션 측 지표",
+        "explanation": "SDK 재시도 횟수와 쓰로틀 예외 수를 테이블·인덱스·작업별 태그로 남기면 CloudWatch 1분 해상도로 보이지 않는 순간 현상을 볼 수 있다."
+      },
+      {
+        "point": "버스트 용량의 영향",
+        "explanation": "쓰지 않은 용량이 최대 5분 분량까지 버스트 용량으로 쌓여 짧은 피크를 흡수하므로, 같은 피크라도 직전 사용량에 따라 쓰로틀 여부가 달라져 간헐적으로 보일 수 있다."
+      },
+      {
+        "point": "배치와 이벤트 시각 상관 분석",
+        "explanation": "쓰로틀 시각을 한정 판매·입고 배치 일정과 겹쳐 보고, 겹치지 않는 날은 다른 원인(특정 인기 SKU)인지 분리한다."
+      }
+    ],
+    "deductions": [
+      {
+        "point": "프로비저닝 용량만 올리면 된다는 결론",
+        "explanation": "핫 파티션이나 GSI 편중이 원인이면 테이블 전체 용량을 올려도 파티션 한계는 그대로라서 쓰로틀이 계속되고 비용만 는다."
+      }
+    ],
+    "commonMistakes": [
+      {
+        "point": "CloudWatch 소비 용량 지표를 초당 값으로 읽기",
+        "explanation": "ConsumedWriteCapacityUnits는 기간 합계로 집계되므로 기간의 초 수로 나눠야 초당 값이 된다. 평균 통계를 그대로 보면 실제 순간 사용량을 잘못 읽는다."
+      }
+    ]
+  },
+  "perspectives": [
+    "사용자 영향 기준 지표",
+    "알람의 실행 가능성",
+    "잡음 감소",
+    "대응 절차"
+  ],
+  "modelAnswer": "### 원인 후보\n\n1. **평균에 가려진 순간 피크:** 5분 평균 40%라도 한정 판매 시작 직후 수 초 동안은 용량을 넘을 수 있습니다. 자동 확장은 수 분 단위로 반응하므로 이런 급증을 막지 못합니다.\n2. **핫 파티션:** 한정 판매 상품처럼 특정 `skuId` 하나에 쓰기가 몰리면, 테이블 전체 용량과 무관하게 파티션당 초당 1,000 WCU 한계에 걸립니다.\n3. **GSI 쓰로틀:** 재고가 바뀔 때마다 두 GSI에도 쓰기가 일어납니다. `status-index` 는 키 값이 세 개뿐이라 쓰기가 소수 파티션에 몰리기 쉽고, 입고 배치는 특정 `warehouseId` 에 몰립니다. GSI가 쓰로틀되면 기본 테이블 쓰기도 실패합니다.\n\n### 원인을 구분하는 관측 설계\n\n- 소비 용량은 1분 단위 Sum을 60으로 나눠 초당 값으로 보고, 테이블과 각 GSI를 따로 그립니다.\n- 테이블·GSI별 `WriteThrottleEvents` 와 작업별 `ThrottledRequests` 를 봅니다. 쓰로틀이 GSI 쪽에만 있으면 3번입니다.\n- CloudWatch Contributor Insights for DynamoDB를 테이블과 GSI에 켜서 가장 많이 쓰이거나 쓰로틀된 키를 봅니다. 한 `skuId` 가 두드러지면 2번입니다.\n- 애플리케이션에서 쓰로틀 예외 수와 SDK 재시도 횟수를 테이블·인덱스·작업 태그로 남기고, 예외가 난 키를 로그로 남깁니다. 1분 해상도로 안 보이는 순간 현상을 잡습니다.\n- 쓰로틀 시각을 한정 판매·입고 배치 일정과 겹쳐 봐서, 겹치는 날과 아닌 날의 원인을 나눕니다. 버스트 용량이 직전 사용량에 따라 피크를 흡수하기도 해서 간헐적으로 보일 수 있다는 점도 감안합니다.\n\n### 알람 계층\n\n- **호출:** 재고 차감 API의 p99가 500ms를 5분 이상 넘거나, 재시도 후 최종 실패율이 0.1%를 넘을 때입니다. 사용자가 실제로 느끼는 영향입니다.\n- **경고:** 테이블·GSI 쓰로틀 이벤트가 5분간 연속 발생할 때 채널로만 알립니다.\n- **진단용:** 초당 소비 용량, Contributor Insights 상위 키, 재시도 횟수는 대시보드에 두고 호출 알람의 링크로 연결합니다.\n\n쓰로틀 이벤트로 바로 사람을 부르면, SDK 재시도로 흡수되는 짧은 쓰로틀까지 호출이 되어 알람이 무시되기 쉽습니다.",
+  "relatedStudyTopics": [
+    "DynamoDB 파티션 처리량 한계와 adaptive capacity",
+    "DynamoDB GSI 쓰로틀과 기본 테이블 back pressure",
+    "CloudWatch Contributor Insights for DynamoDB",
+    "DynamoDB burst capacity",
+    "DynamoDB CloudWatch 지표 해석"
+  ]
+}

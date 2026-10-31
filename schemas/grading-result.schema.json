@@ -1,0 +1,84 @@
+{
+  "title": "GradingResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requiredCoverage",
+    "bonusMatched",
+    "deductionsApplied",
+    "perspectiveScores",
+    "strengths",
+    "weaknesses",
+    "studyRecommendations",
+    "overallComment"
+  ],
+  "properties": {
+    "requiredCoverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["point", "status", "comment"],
+        "properties": {
+          "point": { "type": "string" },
+          "status": { "type": "string", "enum": ["full", "partial", "missing"] },
+          "comment": { "type": "string" }
+        }
+      }
+    },
+    "bonusMatched": { "type": "array", "items": { "type": "string" } },
+    "deductionsApplied": { "type": "array", "items": { "type": "string" } },
+    "perspectiveScores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["perspective", "score", "comment"],
+        "properties": {
+          "perspective": { "type": "string" },
+          "score": { "type": "integer" },
+          "comment": { "type": "string" }
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["summary", "quote"],
+        "properties": {
+          "summary": { "type": "string" },
+          "quote": { "type": "string" }
+        }
+      }
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["summary", "quote", "improvement"],
+        "properties": {
+          "summary": { "type": "string" },
+          "quote": { "type": "string" },
+          "improvement": { "type": "string" }
+        }
+      }
+    },
+    "studyRecommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keyword", "reason", "searchQuery"],
+        "properties": {
+          "keyword": { "type": "string" },
+          "reason": { "type": "string" },
+          "searchQuery": { "type": "string" }
+        }
+      }
+    },
+    "overallComment": { "type": "string" }
+  }
+}
