@@ -35,3 +35,31 @@ jobs:
             release/*.dmg
             release/*.exe
           if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # 같은 실행을 다시 돌린 경우: 이미 만든 릴리스의 파일만 교체한다
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* \
+              --target "$GITHUB_SHA" \
+              --title "Folio ${version} (build ${GITHUB_RUN_NUMBER})" \
+              --generate-notes
+          fi

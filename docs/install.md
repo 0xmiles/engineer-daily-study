@@ -95,5 +95,5 @@ npm run dist:win
 
 ## 7. 빌드 없이 설치 파일 받기
 
-저장소를 GitHub에 올리면 `.github/workflows/build.yml` 이 macOS와 Windows 설치 파일을 각각 만듭니다.
-**Actions → Build installers → 최근 실행 → Artifacts** 에서 내려받습니다.
+`main` 브랜치에 푸시하면 `.github/workflows/build.yml` 이 macOS와 Windows 설치 파일을 각각 만들고, 두 파일을 담은 GitHub 릴리스를 새로 만듭니다.
+저장소의 **Releases** 에서 가장 최근 릴리스(`v<버전>-build.<실행 번호>`)를 열어 `.dmg` 또는 `.exe` 를 내려받습니다.
