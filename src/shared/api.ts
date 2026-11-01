@@ -1,7 +1,9 @@
 import type {
   Attempt,
   AttemptOrigin,
+  ConversationInterview,
   DailyItem,
+  Difficulty,
   Feedback,
   FeedbackScope,
   Job,
@@ -11,6 +13,11 @@ import type {
   QuestionSpec,
   ReviewStatus,
   Settings,
+  TimedInterview,
+  TimedInterviewFormat,
+  TimedInterviewItem,
+  Topic,
+  TopicDefinition,
 } from './types'
 
 export interface TodayItemView extends DailyItem {
@@ -72,6 +79,80 @@ export interface RunnerStatus {
   codex: string | null
 }
 
+export interface CustomTopicInput {
+  label: string
+  description: string
+}
+
+export interface StudyNoteSource {
+  kind: 'attempt' | 'interview'
+  /** Attempt id or interview id to open. */
+  id: string
+  title: string
+  reason: string
+  searchQuery: string
+  recommendedAt: string
+}
+
+/** Study recommendations with the same keyword, gathered from every grading and interview report. */
+export interface StudyNote {
+  key: string
+  keyword: string
+  /** Newest first. */
+  sources: StudyNoteSource[]
+  topics: Topic[]
+  memo: string
+  isDone: boolean
+  /** Recommended again after the user marked it done. */
+  isReopened: boolean
+  lastRecommendedAt: string
+}
+
+export interface StudyNoteChanges {
+  memo?: string
+  done?: boolean
+}
+
+export interface StudyDay {
+  date: string
+  count: number
+}
+
+export interface StreakView {
+  /** Consecutive study days up to today, or up to yesterday while today is still open. */
+  current: number
+  longest: number
+  studiedToday: boolean
+  /** Activity per day for the heatmap, oldest first, ending today. */
+  days: StudyDay[]
+}
+
+export interface TimedInterviewOptions {
+  topic?: Topic
+  difficulty: Difficulty
+  format: TimedInterviewFormat
+  questionCount: number
+  timeLimitMinutes: number
+}
+
+export interface ConversationInterviewOptions {
+  topic?: Topic
+  difficulty: Difficulty
+  mainQuestionCount: number
+  maxFollowUps: number
+}
+
+export interface TimedInterviewItemView extends TimedInterviewItem {
+  question: Question | null
+  attempt: Attempt | null
+}
+
+export type TimedInterviewView = Omit<TimedInterview, 'items'> & { items: TimedInterviewItemView[] }
+export type InterviewView = TimedInterviewView | ConversationInterview
+
+/** Screens the main process can open, e.g. from a notification click. */
+export type NavigationTarget = 'today'
+
 export interface DailyStudyApi {
   getSettings(): Promise<Settings>
   saveSettings(changes: Partial<Settings>): Promise<Settings>
@@ -101,6 +182,46 @@ export interface DailyStudyApi {
   listHistory(): Promise<HistoryEntry[]>
   getStats(): Promise<StudyStats>
 
+  listTopics(): Promise<TopicDefinition[]>
+  setTopicEnabled(value: Topic, enabled: boolean): Promise<void>
+  addCustomTopic(input: CustomTopicInput): Promise<TopicDefinition>
+  updateCustomTopic(value: Topic, input: CustomTopicInput): Promise<void>
+  deleteCustomTopic(value: Topic): Promise<void>
+
+  /** Saves the draft, then generates the next hint in the background; resolves to the job id. */
+  requestHint(attemptId: string, answer: string): Promise<string>
+  postponeAttempt(attemptId: string, answer: string): Promise<void>
+  /** Postponed attempts that have not been solved again yet. */
+  listPostponed(): Promise<HistoryEntry[]>
+  /** Resolves to the attempt that solves the postponed question again. */
+  startRetry(postponedAttemptId: string): Promise<string>
+
+  requestFollowUps(attemptId: string): Promise<string>
+  answerFollowUp(attemptId: string, followUpId: string, answer: string): Promise<string>
+  retryFollowUpEvaluation(attemptId: string, followUpId: string): Promise<string>
+  askInquiry(attemptId: string, question: string): Promise<string>
+  retryInquiry(attemptId: string, inquiryId: string): Promise<string>
+
+  listStudyNotes(): Promise<StudyNote[]>
+  updateStudyNote(key: string, changes: StudyNoteChanges): Promise<void>
+
+  getStreak(): Promise<StreakView>
+
+  listInterviews(): Promise<InterviewView[]>
+  getInterview(id: string): Promise<InterviewView | null>
+  /** Resolves to the new interview id. */
+  startTimedInterview(options: TimedInterviewOptions): Promise<string>
+  retryInterviewPreparation(id: string): Promise<void>
+  /** Starts the timer of the first item not submitted yet. */
+  beginTimedItem(id: string): Promise<void>
+  submitTimedItem(id: string, answer: string, timedOut: boolean): Promise<void>
+  startConversationInterview(options: ConversationInterviewOptions): Promise<string>
+  answerConversation(id: string, answer: string): Promise<void>
+  retryConversationTurn(id: string): Promise<void>
+  finishConversation(id: string): Promise<void>
+  retryInterviewReport(id: string): Promise<void>
+  abandonInterview(id: string): Promise<void>
+
   listFeedback(): Promise<Feedback[]>
   addQuestionFeedback(input: QuestionFeedbackInput): Promise<void>
   addAuthoringFeedback(input: AuthoringFeedbackInput): Promise<void>
@@ -110,11 +231,13 @@ export interface DailyStudyApi {
   cancelJob(id: string): Promise<void>
   onJobsChanged(listener: (jobs: Job[]) => void): () => void
   onDataChanged(listener: () => void): () => void
+  onNavigate(listener: (target: NavigationTarget) => void): () => void
 }
 
-export type InvokableApi = Omit<DailyStudyApi, 'onJobsChanged' | 'onDataChanged'>
+export type InvokableApi = Omit<DailyStudyApi, 'onJobsChanged' | 'onDataChanged' | 'onNavigate'>
 
 export const IPC_EVENTS = {
   jobsChanged: 'event:jobs-changed',
   dataChanged: 'event:data-changed',
+  navigate: 'event:navigate',
 } as const

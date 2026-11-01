@@ -1,0 +1,38 @@
+{
+  "title": "InterviewReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["overallScore", "summary", "questions", "strengths", "weaknesses", "studyRecommendations"],
+  "properties": {
+    "overallScore": { "type": "integer" },
+    "summary": { "type": "string" },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "assessment", "score"],
+        "properties": {
+          "question": { "type": "string" },
+          "assessment": { "type": "string" },
+          "score": { "type": "integer" }
+        }
+      }
+    },
+    "strengths": { "type": "array", "items": { "type": "string" } },
+    "weaknesses": { "type": "array", "items": { "type": "string" } },
+    "studyRecommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keyword", "reason", "searchQuery"],
+        "properties": {
+          "keyword": { "type": "string" },
+          "reason": { "type": "string" },
+          "searchQuery": { "type": "string" }
+        }
+      }
+    }
+  }
+}

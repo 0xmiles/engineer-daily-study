@@ -42,6 +42,11 @@ export class JobManager {
     return this.jobs.some((job) => job.kind === kind && job.status === 'running')
   }
 
+  /** Jobs set their target as the first step of their work, so a job started a moment ago already counts. */
+  isRunningFor(kind: JobKind, targetId: string): boolean {
+    return this.jobs.some((job) => job.kind === kind && job.status === 'running' && job.targetId === targetId)
+  }
+
   cancel(id: string): void {
     this.controllers.get(id)?.abort()
   }

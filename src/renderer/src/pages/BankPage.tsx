@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { Question, QuestionFormat, Topic } from '@shared/types'
-import { FORMATS, TOPICS } from '@shared/taxonomy'
+import { FORMATS } from '@shared/taxonomy'
 import { api, errorMessage } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useNavigate } from '../state/navigation'
+import { useTopicOptions } from '../state/topics'
 import { useToast } from '../components/toast'
 import { Button, Select, Tabs } from '../components/controls'
 import { EmptyState, ErrorPanel, SkeletonList } from '../components/feedback'
@@ -49,6 +50,7 @@ function QuestionList({ questions }: { questions: Question[] }) {
   const [topic, setTopic] = useState<Topic | ''>('')
   const [servedFilter, setServedFilter] = useState<'all' | 'served' | 'unserved'>('all')
   const navigate = useNavigate()
+  const topicOptions = useTopicOptions()
   const visible = useMemo(() => questions.filter((question) =>
     (!format || question.format === format) &&
     (!topic || question.topic === topic) &&
@@ -58,7 +60,7 @@ function QuestionList({ questions }: { questions: Question[] }) {
     <>
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Select label="형식" value={format} options={FORMATS} allowEmpty="전체" onChange={setFormat} />
-        <Select label="주제" value={topic} options={TOPICS} allowEmpty="전체" onChange={setTopic} />
+        <Select label="주제" value={topic} options={topicOptions} allowEmpty="전체" onChange={setTopic} />
         <Select label="출제 여부" value={servedFilter} options={[{ value: 'all', label: '전체' }, { value: 'unserved', label: '아직 출제 안 됨' }, { value: 'served', label: '출제됨' }]} onChange={(value) => setServedFilter((value || 'all') as typeof servedFilter)} />
       </div>
       <p className="mb-2 text-xs text-ink-muted">{visible.length}개 문제</p>

@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 // Antivirus scanners and OneDrive briefly lock files on Windows, which makes rename fail with these codes.
 const TRANSIENT_LOCK_CODES = new Set(['EPERM', 'EBUSY', 'EACCES'])
@@ -25,6 +25,13 @@ function renameWithRetry(from: string, to: string): void {
   }
 }
 
+/** Writes through a temp file and rename so a crash never leaves half a file. */
+function writeJsonAtomically(path: string, value: unknown): void {
+  const temporaryPath = `${path}.tmp`
+  writeFileSync(temporaryPath, JSON.stringify(value, null, 2), 'utf8')
+  renameWithRetry(temporaryPath, path)
+}
+
 /** A directory of `<key>.json` files. Writes go through a temp file and rename so a crash never leaves half a file. */
 export class JsonDirectory<T> {
   constructor(private readonly directory: string) {
@@ -45,10 +52,7 @@ export class JsonDirectory<T> {
   }
 
   write(key: string, value: T): void {
-    const path = this.pathOf(key)
-    const temporaryPath = `${path}.tmp`
-    writeFileSync(temporaryPath, JSON.stringify(value, null, 2), 'utf8')
-    renameWithRetry(temporaryPath, path)
+    writeJsonAtomically(this.pathOf(key), value)
   }
 
   remove(key: string): void {
@@ -73,5 +77,21 @@ export class JsonDirectory<T> {
   private pathOf(key: string): string {
     if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid storage key: ${key}`)
     return join(this.directory, `${key}.json`)
+  }
+}
+
+/** One JSON file, written the same crash-safe way as the entries of a JsonDirectory. */
+export class JsonFile<T> {
+  constructor(private readonly path: string) {
+    mkdirSync(dirname(path), { recursive: true })
+  }
+
+  read(): T | null {
+    if (!existsSync(this.path)) return null
+    return JSON.parse(readFileSync(this.path, 'utf8')) as T
+  }
+
+  write(value: T): void {
+    writeJsonAtomically(this.path, value)
   }
 }

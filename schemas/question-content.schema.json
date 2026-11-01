@@ -36,18 +36,7 @@
         "architecture-principle"
       ]
     },
-    "topic": {
-      "type": "string",
-      "enum": [
-        "kotlin-spring",
-        "kafka",
-        "mysql-postgresql",
-        "dynamodb",
-        "distributed-systems",
-        "cache",
-        "api-architecture"
-      ]
-    },
+    "topic": { "type": "string" },
     "difficulty": { "type": "string", "enum": ["junior", "middle", "senior"] },
     "title": { "type": "string" },
     "situation": { "type": "string" },

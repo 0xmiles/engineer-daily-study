@@ -1,15 +1,21 @@
-import type { Attempt, GradingResult, Question } from '@shared/types'
-import { computeTotalScore } from '../domain/scoring'
+import type { Attempt, GradingResult, Question, QuestionContent } from '@shared/types'
+import { applyHintPenalty, computeTotalScore, hintPenaltyFor } from '../domain/scoring'
 import { runSkill } from '../llm/skillRunner'
 import type { JobContext } from '../jobs/jobManager'
 import type { Repositories } from '../store/repositories'
 import type { AppContext } from './appContext'
 
 const INTERRUPTED_MESSAGE = '앱이 종료되어 채점이 중단되었습니다. 다시 채점해 주세요.'
+const CANCELLED_INTERVIEW_MESSAGE = '채점을 취소했습니다. 모의 면접 답안은 고칠 수 없으니 다시 채점하세요.'
+
+/** The question as the grader skill sees it: content with rubric and model answer, without bank metadata. */
+export function graderQuestion(question: Question): QuestionContent {
+  const { id, source, reviewStatus, createdAt, variantOf, servedAt, ...content } = question
+  return content
+}
 
 function gradingPayload(question: Question, answer: string): object {
-  const { id, source, reviewStatus, createdAt, variantOf, servedAt, ...content } = question
-  return { question: content, answer }
+  return { mode: 'grade', question: graderQuestion(question), answer }
 }
 
 async function gradeWork(context: AppContext, job: JobContext, attemptId: string): Promise<void> {
@@ -24,7 +30,9 @@ async function gradeWork(context: AppContext, job: JobContext, attemptId: string
     signal: job.signal,
     onStage: job.setStage,
   })
-  const grading = { ...result, totalScore: computeTotalScore(question, result), gradedAt: new Date().toISOString(), runner: context.settings().runner }
+  const hintCount = attempt.hints?.length ?? 0
+  const totalScore = applyHintPenalty(computeTotalScore(question, result), hintCount)
+  const grading = { ...result, totalScore, hintPenalty: hintPenaltyFor(hintCount), gradedAt: new Date().toISOString(), runner: context.settings().runner }
   repositories.saveAttempt({ ...repositories.requireAttempt(attemptId), status: 'graded', grading, ...NO_GRADING_ERROR })
 }
 
@@ -48,12 +56,18 @@ function startGradingJob(context: AppContext, attemptId: string): string {
   }, {
     onSucceeded: context.notifyDataChanged,
     onFailed: (message, detail) => updateAttemptAndNotify(context, attemptId, { status: 'grading-failed', gradingError: message, gradingErrorDetail: detail }),
-    onCancelled: () => updateAttemptAndNotify(context, attemptId, { status: 'draft', submittedAt: null }),
+    onCancelled: () => updateAttemptAndNotify(context, attemptId, cancelledGradingChanges(context.repositories().requireAttempt(attemptId))),
   })
   return jobId
 }
 
-/** Locks the answer and starts grading in the background; cancelling returns the attempt to draft. */
+/** A mock interview answer stays submitted once its time is up, so cancelling only leaves it waiting to be graded again. */
+function cancelledGradingChanges(attempt: Attempt): Partial<Attempt> {
+  if (attempt.origin === 'interview') return { status: 'grading-failed', gradingError: CANCELLED_INTERVIEW_MESSAGE, gradingErrorDetail: null }
+  return { status: 'draft', submittedAt: null }
+}
+
+/** Locks the answer and starts grading in the background; cancelling returns the attempt to draft (except in mock interviews). */
 export function submitAttempt(context: AppContext, attemptId: string, answer: string): string {
   const repositories = context.repositories()
   const attempt = repositories.requireAttempt(attemptId)

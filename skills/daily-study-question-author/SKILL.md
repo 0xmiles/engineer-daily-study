@@ -25,7 +25,7 @@ description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술�
 
 ### generate: 새 문제 생성
 
-입력: `format`, `category`, `topic`, `difficulty`, `existingQuestions`(같은 주제·유형의 기존 문제 요약), `userFeedback`(출제 지침).
+입력: `format`, `category`, `topic`, `customTopic`(사용자 정의 주제의 이름과 출제 범위, 기본 주제면 `null`), `difficulty`, `existingQuestions`(같은 주제·유형의 기존 문제 요약), `userFeedback`(출제 지침).
 
 1. `existingQuestions` 의 `keyIssues` 를 읽고, 겹치지 않는 핵심 쟁점을 고른다.
 2. `references/question-format.md` 규칙대로 문제를 쓴다.
@@ -37,7 +37,7 @@ description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술�
 
 - 원본과 **같은 쟁점**을 묻되 **상황은 완전히 다르게** 만든다. 수치·이름·스택만 바꾼 문제는 중복이므로 허용하지 않는다.
 - `weakPoints` 가 채점 기준의 필수 항목에 반드시 들어가게 한다.
-- 형식·유형·난이도는 원본을 따른다. 주제는 쟁점이 성립하면 바꿔도 된다.
+- 형식·유형·난이도는 원본을 따른다. 주제는 쟁점이 성립하면 바꿔도 된다. 단, 요청의 `topic` 이 `custom-` 으로 시작하면 그 주제를 유지한다.
 
 ### draft-rubric: 직접 입력한 문제의 채점 기준 작성
 

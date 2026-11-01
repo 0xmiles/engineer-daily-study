@@ -1,0 +1,20 @@
+{
+  "title": "FollowUpQuestions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["questions"],
+  "properties": {
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "focus"],
+        "properties": {
+          "question": { "type": "string" },
+          "focus": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import type { GradingResult, QuestionContent } from '@shared/types'
+import { HINT_PENALTY } from '@shared/rules'
 
 // Weights mirror skills/daily-study-grader/references/grading-guide.md; change both together.
 const REQUIRED_WEIGHT = 60
@@ -36,4 +37,13 @@ function deduction(result: GradingResult): number {
 export function computeTotalScore(question: QuestionContent, result: GradingResult): number {
   const total = requiredScore(result) + perspectiveScore(result) + bonusScore(question, result) - deduction(result)
   return Math.round(Math.min(100, Math.max(0, total)))
+}
+
+/** Hints are charged after grading, so the grader judges the answer alone. */
+export function hintPenaltyFor(hintCount: number): number {
+  return hintCount * HINT_PENALTY
+}
+
+export function applyHintPenalty(totalScore: number, hintCount: number): number {
+  return Math.max(0, totalScore - hintPenaltyFor(hintCount))
 }

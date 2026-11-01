@@ -1,0 +1,11 @@
+{
+  "title": "FollowUpEvaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "comment", "modelAnswer"],
+  "properties": {
+    "verdict": { "type": "string", "enum": ["good", "partial", "insufficient"] },
+    "comment": { "type": "string" },
+    "modelAnswer": { "type": "string" }
+  }
+}

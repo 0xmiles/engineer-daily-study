@@ -19,6 +19,9 @@ export function useRunningJob(kind: JobKind, targetId?: string): Job | undefined
   return useJobs().find((job) => job.kind === kind && job.status === 'running' && (targetId === undefined || job.targetId === targetId))
 }
 
+// Interview turns come back while the user is watching the conversation, so a success toast would only interrupt.
+const QUIET_SUCCESS_KINDS: JobKind[] = ['interview-turn']
+
 /** Keeps the job list in sync with the main process and announces every finished job with a toast. */
 export function JobsProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -36,7 +39,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       const previous = previousStatuses.current.get(job.id)
       previousStatuses.current.set(job.id, job.status)
       if (previous !== 'running' || job.status === 'running') continue
-      if (job.status === 'succeeded') showToast({ tone: 'success', title: `${job.label} 완료`, action: successAction(job, navigate) })
+      if (job.status === 'succeeded' && !QUIET_SUCCESS_KINDS.includes(job.kind)) showToast({ tone: 'success', title: `${job.label} 완료`, action: successAction(job, navigate) })
       if (job.status === 'failed') showToast({ tone: 'error', title: `${job.label} 실패`, message: job.error ?? undefined, action: failureAction(job, showToast) })
     }
   }, [jobs, showToast, navigate])
@@ -52,6 +55,13 @@ function successAction(job: Job, navigate: Navigate) {
     case 'draft-rubric':
     case 'generate-question': return { label: '문제 보기', onClick: () => navigate({ name: 'question', questionId: targetId }) }
     case 'practice-question': return { label: '풀러 가기', onClick: () => navigate({ name: 'attempt', attemptId: targetId }) }
+    case 'hint':
+    case 'follow-up-questions':
+    case 'follow-up-evaluation':
+    case 'inquiry': return { label: '보기', onClick: () => navigate({ name: 'attempt', attemptId: targetId }) }
+    case 'prepare-interview':
+    case 'interview-turn':
+    case 'interview-report': return { label: '면접 보기', onClick: () => navigate({ name: 'interview', interviewId: targetId }) }
     default: return undefined
   }
 }

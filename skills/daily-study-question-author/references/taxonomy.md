@@ -46,3 +46,12 @@
 | `api-architecture` | API와 아키텍처 | 하위 호환을 깨는 변경, 모놀리스 분리, 동기 호출 연쇄 장애, 페이지네이션 | 동기·비동기 결합도, 모듈 경계, API 버전 관리, 멱등 키, 백프레셔 |
 
 Redis, SQS, Elasticsearch 같은 주변 기술은 위 주제의 상황 안에서 자연스럽게 등장해도 된다.
+
+### 사용자 정의 주제
+
+사용자는 앱에서 주제를 직접 추가할 수 있다(예: Redis, Elasticsearch). 이런 주제의 `topic` 값은 `custom-` 으로 시작하고, 요청에 `customTopic` 이 함께 온다.
+
+- `customTopic.label` 은 주제 이름, `customTopic.description` 은 사용자가 적은 출제 범위다.
+- 위 표 대신 `description` 의 범위 안에서 시나리오 상황과 개념 원리를 고른다. 범위를 벗어난 쟁점을 주로 묻지 않는다.
+- 결과의 `topic` 에는 요청의 `topic` 값을 그대로 쓴다.
+- `customTopic` 이 `null` 이면 위 표의 기본 주제다.

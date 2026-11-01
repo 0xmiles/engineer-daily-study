@@ -13,6 +13,9 @@ export function defaultSettings(documentsDirectory: string): Settings {
     codexPath: '',
     model: '',
     theme: 'system',
+    reminderEnabled: true,
+    reminderTime: '09:00',
+    launchAtLogin: false,
   }
 }
 
@@ -21,6 +24,10 @@ const THEMES: readonly unknown[] = ['light', 'dark', 'system'] satisfies Setting
 // Windows `.cmd` wrappers re-expand their arguments, so the model name must not carry shell metacharacters,
 // and a leading dash would be read by the CLI as another option.
 const MODEL_NAME_PATTERN = /^(?!-)[A-Za-z0-9._:/[\]-]*$/
+
+const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+const isBoolean = (value: unknown): boolean => typeof value === 'boolean'
 
 const isOptionalAbsolutePath = (value: unknown): boolean => value === '' || (typeof value === 'string' && isAbsolute(value))
 
@@ -36,6 +43,12 @@ const SETTING_RULES: { [Key in keyof Settings]: { isValid: (value: unknown) => b
     message: '모델 이름에는 영문, 숫자와 . _ : / - [ ] 만 쓸 수 있고, - 로 시작할 수 없습니다.',
   },
   theme: { isValid: (value) => THEMES.includes(value), message: '화면 테마는 light, dark, system 중 하나여야 합니다.' },
+  reminderEnabled: { isValid: isBoolean, message: '알림 사용 여부 값이 올바르지 않습니다.' },
+  reminderTime: {
+    isValid: (value) => typeof value === 'string' && REMINDER_TIME_PATTERN.test(value),
+    message: '알림 시각은 00:00부터 23:59 사이의 HH:MM 형식으로 입력하세요.',
+  },
+  launchAtLogin: { isValid: isBoolean, message: '로그인할 때 실행 여부 값이 올바르지 않습니다.' },
 }
 
 function isSettingKey(key: string): key is keyof Settings {

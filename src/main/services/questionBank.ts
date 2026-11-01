@@ -1,6 +1,6 @@
 import type { AttemptOrigin, Question, QuestionSpec, ReviewStatus } from '@shared/types'
 import type { ManualQuestionInput, StartResult } from '@shared/api'
-import { categoryLabel, difficultyLabel, topicLabel } from '@shared/taxonomy'
+import { categoryLabel, difficultyLabel } from '@shared/taxonomy'
 import { addDays } from '../domain/dates'
 import { pickUnservedQuestion } from '../domain/selection'
 import type { JobContext } from '../jobs/jobManager'
@@ -8,20 +8,21 @@ import type { Repositories } from '../store/repositories'
 import { buildSelectionContext, type AppContext } from './appContext'
 import { createAttempt, todayKey } from './daily'
 import { draftRubricForManualQuestion, generateQuestion } from './questionAuthoring'
+import { topicLabelIn } from './topics'
 
 const MAX_GENERATE_COUNT = 5
 const PRACTICE_JOB_ACTION = '추가 문제 생성'
 const BANK_JOB_ACTION = '문제 은행에 추가'
 
 /** Topic and category stay open until the generation turn comes, so the label is completed then. */
-function jobLabel(action: string, spec: QuestionSpec): string {
-  const topic = spec.topic ? topicLabel(spec.topic) : '주제 자동'
+function jobLabel(context: AppContext, action: string, spec: QuestionSpec): string {
+  const topic = spec.topic ? topicLabelIn(context.repositories(), spec.topic) : '주제 자동'
   const category = spec.category ? categoryLabel(spec.category) : '유형 자동'
   return `${action}: ${topic} · ${category} · ${difficultyLabel(spec.difficulty)}`
 }
 
 function generateLabelledQuestion(context: AppContext, job: JobContext, action: string, spec: QuestionSpec): Promise<Question> {
-  return generateQuestion(context, job, { spec, onSpecResolved: (concreteSpec) => job.setLabel(jobLabel(action, concreteSpec)) })
+  return generateQuestion(context, job, { spec, onSpecResolved: (concreteSpec) => job.setLabel(jobLabel(context, action, concreteSpec)) })
 }
 
 function markServedAndStart(context: AppContext, questionId: string, origin: AttemptOrigin): string {
@@ -40,7 +41,7 @@ export function requestPractice(context: AppContext, spec: QuestionSpec): StartR
     context.notifyDataChanged()
     return { kind: 'ready', targetId: attemptId }
   }
-  const jobId = context.jobs.start('practice-question', jobLabel(PRACTICE_JOB_ACTION, spec), async (job) => {
+  const jobId = context.jobs.start('practice-question', jobLabel(context, PRACTICE_JOB_ACTION, spec), async (job) => {
     const generated = await generateLabelledQuestion(context, job, PRACTICE_JOB_ACTION, spec)
     job.setTarget(markServedAndStart(context, generated.id, 'practice'))
   }, { onSucceeded: context.notifyDataChanged })
@@ -50,7 +51,7 @@ export function requestPractice(context: AppContext, spec: QuestionSpec): StartR
 export function generateQuestions(context: AppContext, spec: QuestionSpec, count: number): string[] {
   const jobIds: string[] = []
   for (let index = 0; index < Math.min(count, MAX_GENERATE_COUNT); index++) {
-    const jobId = context.jobs.start('generate-question', jobLabel(BANK_JOB_ACTION, spec), async (job) => {
+    const jobId = context.jobs.start('generate-question', jobLabel(context, BANK_JOB_ACTION, spec), async (job) => {
       job.setTarget((await generateLabelledQuestion(context, job, BANK_JOB_ACTION, spec)).id)
     }, { onSucceeded: context.notifyDataChanged })
     jobIds.push(jobId)

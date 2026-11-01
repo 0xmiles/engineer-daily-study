@@ -6,6 +6,12 @@ const INVOKABLE_METHODS = [
   'getToday', 'prepareToday', 'startDailyAttempt', 'retryDailyItem', 'requestPractice',
   'listQuestions', 'getQuestion', 'createManualQuestion', 'generateQuestions', 'setReviewStatus', 'deleteQuestion',
   'startAttempt', 'getAttempt', 'saveDraft', 'submitAttempt', 'retryGrading', 'listHistory', 'getStats',
+  'listTopics', 'setTopicEnabled', 'addCustomTopic', 'updateCustomTopic', 'deleteCustomTopic',
+  'requestHint', 'postponeAttempt', 'listPostponed', 'startRetry',
+  'requestFollowUps', 'answerFollowUp', 'retryFollowUpEvaluation', 'askInquiry', 'retryInquiry',
+  'listStudyNotes', 'updateStudyNote', 'getStreak',
+  'listInterviews', 'getInterview', 'startTimedInterview', 'retryInterviewPreparation', 'beginTimedItem', 'submitTimedItem',
+  'startConversationInterview', 'answerConversation', 'retryConversationTurn', 'finishConversation', 'retryInterviewReport', 'abandonInterview',
   'listFeedback', 'addQuestionFeedback', 'addAuthoringFeedback', 'setFeedbackActive',
   'listJobs', 'cancelJob',
 ] as const satisfies readonly (keyof InvokableApi)[]
@@ -28,6 +34,7 @@ const api: DailyStudyApi = {
   ...invokers,
   onJobsChanged: (listener) => subscribe(IPC_EVENTS.jobsChanged, listener),
   onDataChanged: (listener) => subscribe(IPC_EVENTS.dataChanged, listener),
+  onNavigate: (listener) => subscribe(IPC_EVENTS.navigate, listener),
 }
 
 void everyMethodIsInvokable

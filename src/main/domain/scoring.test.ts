@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GradingResult, QuestionContent } from '@shared/types'
-import { computeTotalScore } from './scoring'
+import { applyHintPenalty, computeTotalScore } from './scoring'
 
 const rubricItem = (point: string) => ({ point, explanation: '' })
 const question = {
@@ -41,5 +41,13 @@ describe('computeTotalScore', () => {
   it('clamps perspective scores outside 0~10', () => {
     const result = grading({ perspectiveScores: [{ perspective: 'p', score: 15, comment: '' }] })
     expect(computeTotalScore(question, result)).toBe(100)
+  })
+})
+
+describe('applyHintPenalty', () => {
+  it('takes 5 points per hint and never goes below zero', () => {
+    expect(applyHintPenalty(80, 0)).toBe(80)
+    expect(applyHintPenalty(80, 3)).toBe(65)
+    expect(applyHintPenalty(10, 3)).toBe(0)
   })
 })

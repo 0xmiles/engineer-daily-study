@@ -71,6 +71,10 @@
       {
         "from": "seed",
         "to": "seed"
+      },
+      {
+        "from": "build/icon-windows.png",
+        "to": "tray-icon.png"
       }
     ],
     "mac": {

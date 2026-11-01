@@ -1,21 +1,23 @@
 import { useState } from 'react'
 import type { TodayItemView } from '@shared/api'
 import type { Attempt, DailyItemKind } from '@shared/types'
-import { categoryLabel, topicLabel } from '@shared/taxonomy'
+import { categoryLabel } from '@shared/taxonomy'
 import { api, errorMessage, formatDate } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useNavigate } from '../state/navigation'
 import { useJobs, useRunningJob } from '../state/jobs'
 import { useRequest } from '../state/useRequest'
+import { useTopics } from '../state/topics'
 import { useToast } from '../components/toast'
 import { Button } from '../components/controls'
 import { ErrorPanel, SkeletonList, Spinner } from '../components/feedback'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { Badge, QuestionBadges } from '../components/QuestionBadges'
+import { StreakCard } from '../components/StreakCard'
 
 const PREPARE_FAILURE_TITLE = '문제 준비를 시작하지 못했습니다'
 
-const KIND_LABELS: Record<DailyItemKind, string> = { scenario: '오늘의 시나리오', concept: '오늘의 개념', weakness: '약점 복습' }
+const KIND_LABELS: Record<DailyItemKind, string> = { scenario: '오늘의 시나리오', concept: '오늘의 개념', weakness: '약점 복습', retry: '미뤄 둔 문제 다시 풀기' }
 
 function attemptStatus(attempt: Attempt | null): { label: string; className: string; action: string } {
   if (!attempt) return { label: '미풀이', className: '', action: '풀기 시작' }
@@ -24,6 +26,7 @@ function attemptStatus(attempt: Attempt | null): { label: string; className: str
     case 'grading': return { label: '채점 중', className: 'bg-info-soft text-info', action: '진행 상황 보기' }
     case 'grading-failed': return { label: '채점 실패', className: 'bg-bad-soft text-bad', action: '확인하기' }
     case 'graded': return { label: `${attempt.grading?.totalScore ?? 0}점`, className: 'bg-good-soft text-good', action: '결과 보기' }
+    case 'postponed': return { label: '미룸', className: 'bg-warn-soft text-warn', action: '미룬 답안 보기' }
   }
 }
 
@@ -36,6 +39,7 @@ interface PendingItemCardProps {
 
 function PendingItemCard({ item, isPreparing, onRetry, onPrepare }: PendingItemCardProps) {
   const request = useRequest()
+  const { label: topicLabel } = useTopics()
   const specText = [item.spec.topic && topicLabel(item.spec.topic), item.spec.category && categoryLabel(item.spec.category)].filter(Boolean).join(' · ')
   if (item.generationError) {
     const retry = (): void => void request.run(onRetry, '문제를 다시 만들지 못했습니다')
@@ -108,6 +112,7 @@ export function TodayPage() {
   return (
     <PageContainer>
       <PageHeader title="오늘의 문제" description={today ? formatDate(today.date) : ' '} actions={<Button variant="secondary" onClick={() => navigate({ name: 'practice' })}>추가로 더 풀기</Button>} />
+      <StreakCard />
       {isLoading && <SkeletonList rows={2} />}
       {error && <ErrorPanel message={error} onRetry={reload} />}
       {today && <PreparationFailure onPrepare={prepare} />}

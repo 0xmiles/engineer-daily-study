@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react'
 import type { HistoryEntry, ScoreBucket } from '@shared/api'
-import type { Difficulty, QuestionCategory, Topic } from '@shared/types'
-import { CATEGORIES, DIFFICULTIES, TOPICS, categoryLabel, topicLabel } from '@shared/taxonomy'
-import { api, formatDateTime } from '../lib/api'
+import type { AttemptOrigin, Difficulty, QuestionCategory, Topic } from '@shared/types'
+import { CATEGORIES, DIFFICULTIES, categoryLabel } from '@shared/taxonomy'
+import { api, formatDate, formatDateTime } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useNavigate } from '../state/navigation'
+import { useRequest } from '../state/useRequest'
+import { useTopicOptions, useTopics } from '../state/topics'
 import { EmptyState, ErrorPanel, Skeleton, SkeletonList } from '../components/feedback'
 import { Button, Select } from '../components/controls'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { Badge, QuestionBadges } from '../components/QuestionBadges'
 
-const STATUS_LABELS = { draft: '작성 중', grading: '채점 중', 'grading-failed': '채점 실패', graded: '채점 완료' }
+const STATUS_LABELS = { draft: '작성 중', grading: '채점 중', 'grading-failed': '채점 실패', graded: '채점 완료', postponed: '나중에 다시 풀기' }
+const ORIGIN_LABELS: Record<AttemptOrigin, string> = { daily: '오늘의 문제', practice: '추가 풀이', interview: '모의 면접' }
 const VISIBLE_BUCKET_COUNT = 5
 
 function WeakestBuckets({ title, buckets, label }: { title: string; buckets: ScoreBucket[]; label: (key: string) => string }) {
@@ -46,6 +49,7 @@ function StatsSkeleton() {
 
 function StatsPanel() {
   const { data: stats, error, isLoading, reload } = useAsyncData(() => api.getStats(), [])
+  const { label: topicLabel } = useTopics()
   if (isLoading) return <StatsSkeleton />
   if (error) return <div className="mb-6"><ErrorPanel message={`통계를 불러오지 못했습니다. ${error}`} onRetry={reload} /></div>
   if (!stats) return null
@@ -78,12 +82,45 @@ function HistoryEmptyState({ hasAnyEntries, onResetFilter }: { hasAnyEntries: bo
 }
 
 function HistoryFilterBar({ filter, onChange }: { filter: HistoryFilter; onChange: (filter: HistoryFilter) => void }) {
+  const topicOptions = useTopicOptions()
   return (
     <div className="mb-4 grid grid-cols-3 gap-3">
-      <Select label="주제" value={filter.topic} options={TOPICS} allowEmpty="전체" onChange={(topic) => onChange({ ...filter, topic })} />
+      <Select label="주제" value={filter.topic} options={topicOptions} allowEmpty="전체" onChange={(topic) => onChange({ ...filter, topic })} />
       <Select label="유형" value={filter.category} options={CATEGORIES} allowEmpty="전체" onChange={(category) => onChange({ ...filter, category })} />
       <Select label="난이도" value={filter.difficulty} options={DIFFICULTIES} allowEmpty="전체" onChange={(difficulty) => onChange({ ...filter, difficulty })} />
     </div>
+  )
+}
+
+function PostponedRow({ entry: { attempt, question } }: { entry: HistoryEntry }) {
+  const navigate = useNavigate()
+  const request = useRequest()
+  const solveNow = async (): Promise<void> => {
+    const attemptId = await request.run(() => api.startRetry(attempt.id), '다시 풀기를 시작하지 못했습니다')
+    if (attemptId) navigate({ name: 'attempt', attemptId })
+  }
+  return (
+    <li className="card flex items-center gap-4 p-5">
+      <div className="min-w-0 flex-1">
+        {question && <QuestionBadges question={question} />}
+        <p className="mt-2 truncate font-semibold">{question?.title ?? '삭제된 문제'}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{attempt.retryOn ? `${formatDate(attempt.retryOn)}에 오늘의 문제로 다시 나옵니다` : '다시 나올 날짜가 없습니다'}</p>
+      </div>
+      <Button variant="ghost" onClick={() => navigate({ name: 'attempt', attemptId: attempt.id })}>미룬 답안 보기</Button>
+      <Button variant="secondary" disabled={!question} isLoading={request.isRunning} onClick={() => void solveNow()}>지금 풀기</Button>
+    </li>
+  )
+}
+
+/** Questions put off after using every hint; shown only when there are some. */
+function PostponedPanel() {
+  const { data: entries } = useAsyncData(() => api.listPostponed(), [])
+  if (!entries || entries.length === 0) return null
+  return (
+    <section className="mb-6">
+      <h2 className="mb-3 text-sm font-semibold text-ink-muted">다시 풀 문제 {entries.length}개</h2>
+      <ul className="space-y-2">{entries.map((entry) => <PostponedRow key={entry.attempt.id} entry={entry} />)}</ul>
+    </section>
   )
 }
 
@@ -95,7 +132,7 @@ function HistoryEntryRow({ entry: { attempt, question } }: { entry: HistoryEntry
         <div className="min-w-0 flex-1">
           {question && <QuestionBadges question={question} />}
           <p className="mt-2 truncate font-semibold">{question?.title ?? '삭제된 문제'}</p>
-          <p className="mt-0.5 text-xs text-ink-muted">{formatDateTime(attempt.submittedAt ?? attempt.createdAt)} · {attempt.origin === 'daily' ? '오늘의 문제' : '추가 풀이'}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{formatDateTime(attempt.submittedAt ?? attempt.createdAt)} · {ORIGIN_LABELS[attempt.origin]}</p>
         </div>
         {attempt.grading ? <span className="text-2xl font-bold tracking-tight">{attempt.grading.totalScore}<span className="text-sm font-medium text-ink-faint">점</span></span> : <Badge>{STATUS_LABELS[attempt.status]}</Badge>}
       </button>
@@ -112,6 +149,7 @@ export function HistoryPage() {
     <PageContainer wide>
       <PageHeader title="풀이 기록" description="지난 풀이와 채점 결과, 약점 통계를 확인합니다." />
       <StatsPanel />
+      <PostponedPanel />
       <HistoryFilterBar filter={filter} onChange={setFilter} />
       {isLoading && <SkeletonList />}
       {error && <ErrorPanel message={error} onRetry={reload} />}

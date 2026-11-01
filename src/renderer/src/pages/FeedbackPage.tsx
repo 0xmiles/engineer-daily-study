@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import type { Feedback, FeedbackScope } from '@shared/types'
-import { CATEGORIES, DIFFICULTIES, FEEDBACK_REASONS, FORMATS, TOPICS, categoryLabel, difficultyLabel, formatLabel, topicLabel } from '@shared/taxonomy'
+import type { Topic } from '@shared/types'
+import { CATEGORIES, DIFFICULTIES, FEEDBACK_REASONS, FORMATS, categoryLabel, difficultyLabel, formatLabel } from '@shared/taxonomy'
 import { api, errorMessage, formatDateTime } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
+import { useTopicOptions, useTopics } from '../state/topics'
 import { useToast } from '../components/toast'
 import { Button, Select } from '../components/controls'
 import { EmptyState, ErrorPanel, SkeletonList } from '../components/feedback'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { Badge } from '../components/QuestionBadges'
 
-function scopeText(scope: FeedbackScope): string {
+function scopeText(scope: FeedbackScope, topicLabel: (value: Topic) => string): string {
   const parts = [
     scope.format && formatLabel(scope.format),
     scope.category && categoryLabel(scope.category),
@@ -30,6 +32,7 @@ function AuthoringFeedbackForm() {
   const [scope, setScope] = useState<FeedbackScope>({})
   const [isSaving, setIsSaving] = useState(false)
   const showToast = useToast()
+  const topicOptions = useTopicOptions()
   const save = async (): Promise<void> => {
     setIsSaving(true)
     try {
@@ -48,7 +51,7 @@ function AuthoringFeedbackForm() {
       <div className="grid grid-cols-4 gap-3">
         <Select label="형식" value={scope.format ?? ''} options={FORMATS} allowEmpty="전체" onChange={(format) => setScope({ ...scope, format: format || undefined })} />
         <Select label="유형" value={scope.category ?? ''} options={CATEGORIES} allowEmpty="전체" onChange={(category) => setScope({ ...scope, category: category || undefined })} />
-        <Select label="주제" value={scope.topic ?? ''} options={TOPICS} allowEmpty="전체" onChange={(topic) => setScope({ ...scope, topic: topic || undefined })} />
+        <Select label="주제" value={scope.topic ?? ''} options={topicOptions} allowEmpty="전체" onChange={(topic) => setScope({ ...scope, topic: topic || undefined })} />
         <Select label="난이도" value={scope.difficulty ?? ''} options={DIFFICULTIES} allowEmpty="전체" onChange={(difficulty) => setScope({ ...scope, difficulty: difficulty || undefined })} />
       </div>
       <Button disabled={!comment.trim()} isLoading={isSaving} onClick={() => void save()}>출제 지침 저장</Button>
@@ -59,6 +62,7 @@ function AuthoringFeedbackForm() {
 function FeedbackRow({ feedback }: { feedback: Feedback }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const showToast = useToast()
+  const { label: topicLabel } = useTopics()
   const toggle = async (): Promise<void> => {
     setIsUpdating(true)
     try {
@@ -74,7 +78,7 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
       <div className="min-w-0 flex-1">
         <div className="flex gap-1.5">
           <Badge>{feedback.kind === 'authoring' ? '출제 방식' : '문제 평가'}</Badge>
-          <Badge>적용 범위: {scopeText(feedback.scope)}</Badge>
+          <Badge>적용 범위: {scopeText(feedback.scope, topicLabel)}</Badge>
         </div>
         <p className="mt-2 text-sm">{describe(feedback)}</p>
         <p className="mt-1 text-xs text-ink-faint">{formatDateTime(feedback.createdAt)}</p>

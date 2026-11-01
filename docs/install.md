@@ -36,7 +36,7 @@ npm ci --registry=<사내 npm 미러 주소>
 `npm run setup` 은 다음을 수행합니다.
 
 1. Node.js 버전을 확인합니다.
-2. 출제·채점 skill 두 개(`skills/daily-study-question-author`, `skills/daily-study-grader`)를 Claude Code(`~/.claude/skills`)와 Codex(`~/.codex/skills`)의 사용자 skill 위치에 연결합니다. 그래서 앱 없이 터미널에서 "Daily Study 규칙으로 Kafka 시니어 시나리오 문제 하나 만들어 줘"라고 요청해도 같은 규칙으로 문제가 만들어집니다.
+2. 출제·채점·면접 skill 세 개(`skills/daily-study-question-author`, `skills/daily-study-grader`, `skills/daily-study-interviewer`)를 Claude Code(`~/.claude/skills`)와 Codex(`~/.codex/skills`)의 사용자 skill 위치에 연결합니다. 그래서 앱 없이 터미널에서 "Daily Study 규칙으로 Kafka 시니어 시나리오 문제 하나 만들어 줘"라고 요청해도 같은 규칙으로 문제가 만들어집니다.
 3. `claude`, `codex` 명령을 찾을 수 있는지 확인합니다.
 
 설치 없이 바로 실행해 보려면 다음 명령을 실행합니다.

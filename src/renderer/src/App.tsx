@@ -6,10 +6,15 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { JobsProvider } from './state/jobs'
 import { NavigationContext, type Route } from './state/navigation'
 import { ThemeProvider } from './state/theme'
+import { TopicsProvider } from './state/topics'
+import { api } from './lib/api'
 import { TodayPage } from './pages/TodayPage'
 import { AttemptPage } from './pages/AttemptPage'
 import { PracticePage } from './pages/PracticePage'
+import { InterviewPage } from './pages/InterviewPage'
+import { InterviewSessionPage } from './pages/InterviewSessionPage'
 import { HistoryPage } from './pages/HistoryPage'
+import { StudyNotesPage } from './pages/StudyNotesPage'
 import { BankPage } from './pages/BankPage'
 import { QuestionPage } from './pages/QuestionPage'
 import { FeedbackPage } from './pages/FeedbackPage'
@@ -20,13 +25,15 @@ const APP_NAME = 'Folio'
 const MENU: { route: Route; label: string }[] = [
   { route: { name: 'today' }, label: '오늘의 문제' },
   { route: { name: 'practice' }, label: '추가 풀이' },
+  { route: { name: 'interviews' }, label: '모의 면접' },
   { route: { name: 'history' }, label: '풀이 기록' },
+  { route: { name: 'notes' }, label: '학습 노트' },
   { route: { name: 'bank' }, label: '문제 은행' },
   { route: { name: 'feedback' }, label: '출제 피드백' },
   { route: { name: 'settings' }, label: '설정' },
 ]
 
-const PARENT_MENU: Partial<Record<Route['name'], Route['name']>> = { attempt: 'today', question: 'bank' }
+const PARENT_MENU: Partial<Record<Route['name'], Route['name']>> = { attempt: 'today', question: 'bank', interview: 'interviews' }
 
 function activeMenuName(route: Route): Route['name'] {
   return PARENT_MENU[route.name] ?? route.name
@@ -45,7 +52,10 @@ function CurrentPage({ route }: { route: Route }) {
     case 'today': return <TodayPage />
     case 'attempt': return <AttemptPage key={route.attemptId} attemptId={route.attemptId} />
     case 'practice': return <PracticePage />
+    case 'interviews': return <InterviewPage />
+    case 'interview': return <InterviewSessionPage key={route.interviewId} interviewId={route.interviewId} />
     case 'history': return <HistoryPage />
+    case 'notes': return <StudyNotesPage />
     case 'bank': return <BankPage />
     case 'question': return <QuestionPage key={route.questionId} questionId={route.questionId} />
     case 'feedback': return <FeedbackPage />
@@ -75,25 +85,33 @@ function Sidebar({ route, navigate }: { route: Route; navigate: (route: Route) =
   )
 }
 
+/** The main process opens a screen this way, e.g. when the daily reminder notification is clicked. */
+function useNavigationRequests(navigate: (route: Route) => void): void {
+  useEffect(() => api.onNavigate((target) => navigate({ name: target })), [navigate])
+}
+
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'today' })
   useWindowTitle(route)
+  useNavigationRequests(setRoute)
   return (
     <ToastProvider>
       <ThemeProvider>
         <NavigationContext.Provider value={setRoute}>
           <JobsProvider>
-            <div className="flex h-full">
-              <Sidebar route={route} navigate={setRoute} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex h-12 shrink-0 items-center justify-end px-6">
-                  <JobIndicator />
-                </header>
-                <main className="min-h-0 flex-1 overflow-y-auto">
-                  <CurrentPage route={route} />
-                </main>
+            <TopicsProvider>
+              <div className="flex h-full">
+                <Sidebar route={route} navigate={setRoute} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <header className="flex h-12 shrink-0 items-center justify-end px-6">
+                    <JobIndicator />
+                  </header>
+                  <main className="min-h-0 flex-1 overflow-y-auto">
+                    <CurrentPage route={route} />
+                  </main>
+                </div>
               </div>
-            </div>
+            </TopicsProvider>
           </JobsProvider>
         </NavigationContext.Provider>
       </ThemeProvider>

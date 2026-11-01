@@ -8,6 +8,7 @@ import { runSkill } from '../llm/skillRunner'
 import { SerialQueue, type JobContext } from '../jobs/jobManager'
 import { newId } from '../store/repositories'
 import { buildSelectionContext, type AppContext } from './appContext'
+import { customTopicIn } from './topics'
 
 const MAX_GENERATION_ROUNDS = 3
 const MAX_EXISTING_SUMMARIES = 80
@@ -46,9 +47,12 @@ function runQuestionAuthor<T>(context: AppContext, job: JobContext, schema: 'que
   return runSkill<T>({ skill: 'daily-study-question-author', schema, payload, settings: context.settings(), signal: job.signal, onStage: job.setStage })
 }
 
-/** The requested classification wins over whatever the model echoed back; perspectives always come from taxonomy. */
-function normalizeContent(content: QuestionContent, spec: ConcreteSpec, keepModelTopic: boolean): QuestionContent {
-  const topic = keepModelTopic ? content.topic : spec.topic
+/**
+ * The requested classification wins over whatever the model echoed back; perspectives always come from taxonomy.
+ * A variant may move to another topic, but only to one the user still has enabled.
+ */
+function normalizeContent(content: QuestionContent, spec: ConcreteSpec, allowedModelTopics: string[]): QuestionContent {
+  const topic = allowedModelTopics.includes(content.topic) ? content.topic : spec.topic
   return { ...content, format: spec.format, category: spec.category, difficulty: spec.difficulty, topic, perspectives: perspectivesOf(spec.category) }
 }
 
@@ -83,10 +87,12 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
   const repositories = context.repositories()
   const questions = repositories.questions.readAll()
   const rejectedTitles: string[] = []
+  const allowedModelTopics = variant ? buildSelectionContext(repositories).topics : []
   for (let round = 1; round <= MAX_GENERATION_ROUNDS; round++) {
     const payload = {
       mode: variant ? 'variant' : 'generate',
       ...spec,
+      customTopic: customTopicIn(repositories, spec.topic),
       baseQuestion: variant?.baseQuestion ?? null,
       weakPoints: variant?.weakPoints ?? [],
       existingQuestions: existingSummaries(questions, spec),
@@ -94,7 +100,7 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
       userFeedback: selectAuthoringGuidelines(repositories.feedback.readAll(), questions, spec),
     }
     job.setStage(round === 1 ? '문제를 만드는 중' : `중복을 피해 다시 만드는 중 (${round}/${MAX_GENERATION_ROUNDS})`)
-    const content = normalizeContent(await runQuestionAuthor<QuestionContent>(context, job, 'question-content', payload), spec, variant !== null)
+    const content = normalizeContent(await runQuestionAuthor<QuestionContent>(context, job, 'question-content', payload), spec, allowedModelTopics)
     if (!(await findDuplicateId(context, job, content, questions))) {
       const question = toQuestion(content, variant ? 'variant' : 'generated', variant?.baseQuestion.id ?? null)
       repositories.saveQuestion(question)
@@ -108,9 +114,10 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
 /** Keeps the user's own title, situation and requirements verbatim and lets the skill fill the rubric. */
 export async function draftRubricForManualQuestion(context: AppContext, job: JobContext, input: ManualQuestionInput): Promise<Question> {
   job.setStage('채점 기준을 작성하는 중')
-  const drafted = await runQuestionAuthor<QuestionContent>(context, job, 'question-content', { mode: 'draft-rubric', ...input.spec, title: input.title, situation: input.situation, requirements: input.requirements })
+  const customTopic = customTopicIn(context.repositories(), input.spec.topic)
+  const drafted = await runQuestionAuthor<QuestionContent>(context, job, 'question-content', { mode: 'draft-rubric', ...input.spec, customTopic, title: input.title, situation: input.situation, requirements: input.requirements })
   const content: QuestionContent = {
-    ...normalizeContent(drafted, input.spec, false),
+    ...normalizeContent(drafted, input.spec, []),
     title: input.title,
     situation: input.situation,
     requirements: input.requirements,

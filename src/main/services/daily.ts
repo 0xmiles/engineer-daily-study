@@ -169,12 +169,27 @@ export function createAttempt(repositories: Repositories, question: Question, or
   return attempt
 }
 
+/**
+ * The attempt that solves a postponed question again. Both the daily retry item and the history list lead here,
+ * so whichever is opened first creates it and the other one reuses it.
+ */
+export function startRetryAttempt(repositories: Repositories, postponedAttemptId: string, origin: AttemptOrigin): string {
+  const postponed = repositories.requireAttempt(postponedAttemptId)
+  if (postponed.status !== 'postponed') throw new Error('나중에 다시 풀기로 미룬 풀이가 아닙니다.')
+  if (postponed.retryAttemptId) return postponed.retryAttemptId
+  const attempt = createAttempt(repositories, repositories.requireQuestion(postponed.questionId), origin)
+  repositories.saveAttempt({ ...postponed, retryAttemptId: attempt.id })
+  return attempt.id
+}
+
 export function startDailyAttempt(context: AppContext, date: string, itemIndex: number): string {
   const repositories = context.repositories()
   const item = repositories.dailySets.read(date)?.items[itemIndex]
   if (!item?.questionId) throw new Error('아직 문제가 준비되지 않았습니다.')
   if (item.attemptId) return item.attemptId
-  const attempt = createAttempt(repositories, repositories.requireQuestion(item.questionId), 'daily')
-  updateDailyItem(repositories, date, itemIndex, { attemptId: attempt.id })
-  return attempt.id
+  const attemptId = item.retryOfAttemptId
+    ? startRetryAttempt(repositories, item.retryOfAttemptId, 'daily')
+    : createAttempt(repositories, repositories.requireQuestion(item.questionId), 'daily').id
+  updateDailyItem(repositories, date, itemIndex, { attemptId })
+  return attemptId
 }

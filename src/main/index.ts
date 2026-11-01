@@ -1,14 +1,18 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, dialog, nativeTheme, powerMonitor, shell } from 'electron'
-import { IPC_EVENTS } from '@shared/api'
+import { IPC_EVENTS, type NavigationTarget } from '@shared/api'
 import type { Settings, ThemePreference } from '@shared/types'
 import { isAppUrl, loadAppPage } from './appUrl'
+import { BackgroundTray, applyLaunchAtLogin, keepsRunningWithoutWindow, wasStartedAtLogin } from './background'
 import { JobManager, errorMessageOf } from './jobs/jobManager'
 import { seedQuestionsDirectory } from './llm/resources'
 import { registerIpcHandlers } from './ipc'
+import { DailyReminder, registerNotificationIdentity } from './reminders'
 import type { AppContext } from './services/appContext'
 import { prepareDaily } from './services/daily'
+import { recoverInterruptedDiscussions } from './services/followUps'
 import { recoverInterruptedGradings } from './services/grading'
+import { recoverInterruptedInterviews } from './services/interviews'
 import { importSeedQuestions } from './services/seedImport'
 import { Repositories } from './store/repositories'
 import { SettingsStore, defaultSettings } from './store/settingsStore'
@@ -25,6 +29,10 @@ const DEV_DOCK_ICON = join(__dirname, '../../build/icon.png')
 
 app.setPath('userData', join(app.getPath('appData'), USER_DATA_FOLDER_NAME))
 
+// The lock lives in userData, so it is taken after the path is set. A second launch only brings the running app forward.
+const isPrimaryInstance = app.requestSingleInstanceLock()
+if (!isPrimaryInstance) app.quit()
+
 function broadcast(channel: string, payload?: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
 }
@@ -33,6 +41,8 @@ function openRepositories(dataDirectory: string): Repositories {
   const repositories = new Repositories(dataDirectory)
   importSeedQuestions(repositories, dataDirectory, seedQuestionsDirectory())
   recoverInterruptedGradings(repositories)
+  recoverInterruptedDiscussions(repositories)
+  recoverInterruptedInterviews(repositories)
   return repositories
 }
 
@@ -125,6 +135,22 @@ function createWindow(): BrowserWindow {
   return window
 }
 
+function showMainWindow(): BrowserWindow {
+  const existing = BrowserWindow.getAllWindows()[0]
+  if (!existing) return createWindow()
+  if (existing.isMinimized()) existing.restore()
+  existing.show()
+  existing.focus()
+  return existing
+}
+
+/** A new window already starts on the today screen; an open one is asked to switch to it. */
+function openToday(): void {
+  const hadWindow = BrowserWindow.getAllWindows().length > 0
+  const window = showMainWindow()
+  if (hadWindow) window.webContents.send(IPC_EVENTS.navigate, 'today' satisfies NavigationTarget)
+}
+
 function millisecondsUntilNextMidnight(): number {
   const now = new Date()
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
@@ -157,25 +183,64 @@ function showStartupWarning(window: BrowserWindow, message: string): void {
   window.once('ready-to-show', () => void dialog.showMessageBox(window, { type: 'warning', message: '데이터 폴더를 바꿨습니다', detail: message }))
 }
 
+interface BackgroundServices {
+  reminder: DailyReminder
+  tray: BackgroundTray
+}
+
+/** Applies the settings that live outside the window: the reminder timer, the Windows tray and the login item. */
+function withBackgroundSettings(updateSettings: (changes: Partial<Settings>) => Settings, { reminder, tray }: BackgroundServices) {
+  return (changes: Partial<Settings>): Settings => {
+    const updated = updateSettings(changes)
+    if (changes.reminderEnabled !== undefined || changes.reminderTime !== undefined) reminder.reschedule()
+    if (changes.reminderEnabled !== undefined) tray.update(updated)
+    if (changes.launchAtLogin !== undefined) applyLaunchAtLogin(updated.launchAtLogin)
+    return updated
+  }
+}
+
+/**
+ * A login start stays hidden only when the reminder gives it a reason to run in the background;
+ * a startup warning needs a window to be read in.
+ */
+function shouldStartHidden(settings: Settings, startupWarning: string | null): boolean {
+  return wasStartedAtLogin() && settings.reminderEnabled && !startupWarning
+}
+
 app.whenReady().then(() => {
+  if (!isPrimaryInstance) return
+  registerNotificationIdentity()
   const settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'), defaultSettings(app.getPath('documents')))
   const { context, updateSettings, startupWarning } = createAppContext(settingsStore)
-  registerIpcHandlers(context, updateSettings)
+  const background: BackgroundServices = {
+    reminder: new DailyReminder(context, openToday),
+    tray: new BackgroundTray({ openWindow: () => { showMainWindow() }, openToday }),
+  }
+  registerIpcHandlers(context, withBackgroundSettings(updateSettings, background))
   applyTheme(settingsStore.get().theme)
   nativeTheme.on('updated', () => {
     for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(windowBackground())
   })
   if (!app.isPackaged) app.dock?.setIcon(DEV_DOCK_ICON)
-  const window = createWindow()
-  if (startupWarning) showStartupWarning(window, startupWarning)
+  applyLaunchAtLogin(settingsStore.get().launchAtLogin)
+  background.tray.update(settingsStore.get())
+  const startHidden = shouldStartHidden(settingsStore.get(), startupWarning)
+  if (!startHidden) {
+    const window = createWindow()
+    if (startupWarning) showStartupWarning(window, startupWarning)
+  }
   prepareDaily(context)
   keepDailySetCurrent(context)
+  background.reminder.reschedule({ catchUp: startHidden })
+  // Timers do not run while the computer sleeps, so the reminder is rescheduled and a missed one shown on wake.
+  powerMonitor.on('resume', () => background.reminder.reschedule({ catchUp: true }))
   app.on('before-quit', () => cancelRunningJobs(context))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  app.on('second-instance', () => { showMainWindow() })
+  // app.quit() (tray, Cmd+Q) closes windows without this event, so quitting from the tray still quits.
+  app.on('window-all-closed', () => {
+    if (!keepsRunningWithoutWindow(settingsStore.get())) app.quit()
+  })
 })

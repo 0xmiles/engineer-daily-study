@@ -1,0 +1,11 @@
+{
+  "title": "InterviewTurn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assessment", "action", "message"],
+  "properties": {
+    "assessment": { "type": "string" },
+    "action": { "type": "string", "enum": ["main-question", "follow-up", "finish"] },
+    "message": { "type": "string" }
+  }
+}

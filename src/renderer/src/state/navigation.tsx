@@ -4,7 +4,10 @@ export type Route =
   | { name: 'today' }
   | { name: 'attempt'; attemptId: string }
   | { name: 'practice' }
+  | { name: 'interviews' }
+  | { name: 'interview'; interviewId: string }
   | { name: 'history' }
+  | { name: 'notes' }
   | { name: 'bank' }
   | { name: 'question'; questionId: string }
   | { name: 'feedback' }

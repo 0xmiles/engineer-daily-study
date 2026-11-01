@@ -1,0 +1,9 @@
+{
+  "title": "Hint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hint"],
+  "properties": {
+    "hint": { "type": "string" }
+  }
+}

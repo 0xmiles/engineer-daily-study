@@ -9,6 +9,8 @@ import { PageContainer } from '../components/PageHeader'
 import { QuestionStatement } from '../components/QuestionStatement'
 import { QuestionFeedbackForm } from '../components/QuestionFeedbackForm'
 import { RubricView } from '../components/RubricView'
+import { DiscussionSection } from '../components/DiscussionSection'
+import { HintList } from '../components/HintPanel'
 
 type ResultTab = 'weaknesses' | 'strengths' | 'model' | 'compare' | 'rubric' | 'study'
 
@@ -32,14 +34,21 @@ function Quote({ text }: { text: string }) {
   return <blockquote className="mt-2 border-l-[3px] border-line-strong pl-3 text-sm text-ink-muted">“{text}”</blockquote>
 }
 
-function ScoreHeader({ grading }: { grading: ScoredGrading }) {
+function hintSummary(attempt: Attempt, grading: ScoredGrading): string | null {
+  const hintCount = attempt.hints?.length ?? 0
+  if (hintCount === 0) return null
+  return grading.hintPenalty ? `힌트 ${hintCount}회 사용 (−${grading.hintPenalty}점)` : `힌트 ${hintCount}회 사용`
+}
+
+function ScoreHeader({ attempt, grading }: { attempt: Attempt; grading: ScoredGrading }) {
   const fullCount = grading.requiredCoverage.filter((item) => item.status === 'full').length
+  const details = [`필수 항목 ${fullCount}/${grading.requiredCoverage.length} 충족`, hintSummary(attempt, grading), `${formatDateTime(grading.gradedAt)} 채점`]
   return (
     <section className="card p-7">
       <div className="flex items-end gap-8">
         <div>
           <p className={`text-5xl font-bold tracking-tight ${scoreTone(grading.totalScore)}`}>{grading.totalScore}<span className="text-xl font-medium text-ink-faint"> / 100</span></p>
-          <p className="mt-1 text-sm text-ink-muted">필수 항목 {fullCount}/{grading.requiredCoverage.length} 충족 · {formatDateTime(grading.gradedAt)} 채점</p>
+          <p className="mt-1 text-sm text-ink-muted">{details.filter(Boolean).join(' · ')}</p>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2">
           {grading.perspectiveScores.map((item) => (
@@ -76,7 +85,12 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
         </div>
       )
     case 'rubric':
-      return <RubricView question={question} grading={grading} />
+      return (
+        <div className="space-y-4">
+          <RubricView question={question} grading={grading} />
+          {(attempt.hints ?? []).length > 0 && <section className="card p-6"><h3 className="mb-3 text-sm font-semibold">받은 힌트</h3><HintList hints={attempt.hints ?? []} /></section>}
+        </div>
+      )
     case 'study':
       return <ul className="space-y-3">{grading.studyRecommendations.map((item, index) => (
         <li key={index} className="card p-4"><p className="font-semibold">{item.keyword}</p><p className="mt-1 text-sm text-ink-muted">{item.reason}</p><p className="mt-2 text-xs text-ink-muted">검색어: <code>{item.searchQuery}</code></p></li>
@@ -106,9 +120,10 @@ export function ResultView({ attempt, question }: { attempt: Attempt; question: 
         <summary className="cursor-pointer font-semibold">문제 다시 보기: {question.title}</summary>
         <div className="mt-4"><QuestionStatement question={question} /></div>
       </details>
-      <ScoreHeader grading={attempt.grading!} />
+      <ScoreHeader attempt={attempt} grading={attempt.grading!} />
       <div className="mt-6"><Tabs tabs={RESULT_TABS} active={tab} onChange={setTab} /></div>
       <div className="mt-4"><TabContent tab={tab} attempt={attempt} question={question} /></div>
+      <DiscussionSection attempt={attempt} question={question} />
       <section className="card mt-8 p-5">
         <p className="mb-3 font-semibold">이 문제는 어땠나요?</p>
         <QuestionFeedbackForm questionId={question.id} />

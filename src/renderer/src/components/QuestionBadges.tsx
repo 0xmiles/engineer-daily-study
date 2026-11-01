@@ -1,5 +1,6 @@
 import type { Question } from '@shared/types'
-import { SOURCE_LABELS, categoryLabel, difficultyLabel, formatLabel, topicLabel } from '@shared/taxonomy'
+import { SOURCE_LABELS, categoryLabel, difficultyLabel, formatLabel } from '@shared/taxonomy'
+import { useTopics } from '../state/topics'
 
 const DIFFICULTY_CLASSES = {
   junior: 'bg-good-soft text-good',
@@ -14,6 +15,7 @@ export function Badge({ children, className = 'bg-sunken text-ink-muted' }: { ch
 type BadgeFields = Pick<Question, 'format' | 'category' | 'topic' | 'difficulty'> & Partial<Pick<Question, 'source' | 'reviewStatus'>>
 
 export function QuestionBadges({ question, showSource = false }: { question: BadgeFields; showSource?: boolean }) {
+  const { label: topicLabel } = useTopics()
   return (
     <div className="flex flex-wrap gap-1.5">
       <Badge className="bg-accent-soft text-accent-ink">{formatLabel(question.format)}</Badge>

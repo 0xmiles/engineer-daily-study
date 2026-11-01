@@ -26,6 +26,11 @@ describe('validateSettingsChanges', () => {
     expect(() => validateSettingsChanges({ theme: 'sepia' })).toThrow('화면 테마')
   })
 
+  it('accepts reminder times only as HH:MM within a day', () => {
+    expect(validateSettingsChanges({ reminderTime: '07:30' })).toEqual({ reminderTime: '07:30' })
+    for (const reminderTime of ['7:30', '24:00', '12:60', '']) expect(() => validateSettingsChanges({ reminderTime })).toThrow('알림 시각')
+  })
+
   it('rejects relative executable and data paths', () => {
     expect(() => validateSettingsChanges({ claudePath: 'claude' })).toThrow('Claude Code')
     expect(() => validateSettingsChanges({ dataDirectory: 'data' })).toThrow('데이터 폴더')

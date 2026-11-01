@@ -6,12 +6,13 @@ import { Button, ConfirmDialog, Tabs } from '../components/controls'
 import { Spinner } from '../components/feedback'
 import { Markdown } from '../components/Markdown'
 import { QuestionStatement } from '../components/QuestionStatement'
+import { HintPanel } from '../components/HintPanel'
 
 const AUTOSAVE_DELAY_MILLISECONDS = 800
-type EditorMode = 'write' | 'preview'
+export type EditorMode = 'write' | 'preview'
 type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: string } | { kind: 'failed' }
 
-function useAutosave(attemptId: string, initialSavedAt: string | null) {
+export function useAutosave(attemptId: string, initialSavedAt: string | null) {
   const [saveState, setSaveState] = useState<SaveState>(initialSavedAt ? { kind: 'saved', at: initialSavedAt } : { kind: 'idle' })
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingAnswer = useRef<string | null>(null)
@@ -53,7 +54,7 @@ function useSaveOnLeave(flushPending: () => void): void {
   }, [flushPending])
 }
 
-function SaveIndicator({ state }: { state: SaveState }) {
+export function SaveIndicator({ state }: { state: SaveState }) {
   if (state.kind === 'saving') return <span className="flex items-center gap-1"><Spinner size={12} /> 저장 중</span>
   if (state.kind === 'saved') return <span>자동 저장됨 · {formatDateTime(state.at)}</span>
   if (state.kind === 'failed') return <span className="text-bad">저장하지 못했습니다. Cmd/Ctrl + S 로 다시 저장하세요.</span>
@@ -121,7 +122,7 @@ interface AnswerEditorProps {
   onChange: (answer: string) => void
 }
 
-function AnswerEditor({ mode, answer, hasAnswer, isSubmitting, onChange }: AnswerEditorProps) {
+export function AnswerEditor({ mode, answer, hasAnswer, isSubmitting, onChange }: AnswerEditorProps) {
   if (mode === 'preview') {
     return (
       <div className="card mt-4 min-h-0 flex-1 overflow-y-auto p-5">
@@ -148,7 +149,7 @@ interface EditorHeaderProps {
   question: Question
 }
 
-function EditorHeader({ mode, onModeChange, answer, question }: EditorHeaderProps) {
+export function EditorHeader({ mode, onModeChange, answer, question }: EditorHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <Tabs tabs={[{ value: 'write', label: '작성' }, { value: 'preview', label: '미리보기' }]} active={mode} onChange={onModeChange} />
@@ -192,6 +193,7 @@ export function SolveView({ attempt, question }: { attempt: Attempt; question: Q
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const { saveState, saveNow, scheduleSave, cancelPending } = useAutosave(attempt.id, attempt.draftSavedAt)
   const { isSubmitting, submit } = useSubmitAttempt(attempt.id, cancelPending)
+  const showToast = useToast()
   const hasAnswer = answer.trim() !== ''
   useEditorShortcuts({ onSave: () => void saveNow(answer), onRequestSubmit: () => setIsConfirmOpen(true), canSubmit: hasAnswer && !isSubmitting })
 
@@ -203,10 +205,23 @@ export function SolveView({ attempt, question }: { attempt: Attempt; question: Q
     setIsConfirmOpen(false)
     void submit(answer)
   }
+  // A pending autosave landing after the attempt is postponed would fail, since only drafts can be saved.
+  const postpone = async (): Promise<void> => {
+    cancelPending()
+    try {
+      await api.postponeAttempt(attempt.id, answer)
+      showToast({ tone: 'info', title: '나중에 다시 풀기로 미뤘습니다', message: '며칠 뒤 오늘의 문제로 다시 나옵니다. 풀이 기록에서 먼저 풀 수도 있습니다.' })
+    } catch (reason) {
+      showToast({ tone: 'error', title: '미루지 못했습니다', message: errorMessage(reason) })
+    }
+  }
 
   return (
     <div className="grid h-full grid-cols-2 divide-x divide-line">
-      <div className="overflow-y-auto px-10 pb-10 pt-4"><QuestionStatement question={question} /></div>
+      <div className="overflow-y-auto px-10 pb-10 pt-4">
+        <QuestionStatement question={question} />
+        <HintPanel attempt={attempt} answer={answer} isSubmitting={isSubmitting} onPostpone={postpone} />
+      </div>
       <div className="flex min-h-0 flex-col px-8 pb-6 pt-2">
         <EditorHeader mode={mode} onModeChange={setMode} answer={answer} question={question} />
         <AnswerEditor mode={mode} answer={answer} hasAnswer={hasAnswer} isSubmitting={isSubmitting} onChange={changeAnswer} />

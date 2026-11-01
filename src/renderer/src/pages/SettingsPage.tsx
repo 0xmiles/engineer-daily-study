@@ -11,6 +11,8 @@ import { Button, Select } from '../components/controls'
 import { ErrorPanel, PageLoading, Spinner } from '../components/feedback'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { TopicSettings } from '../components/TopicSettings'
+import { ReminderFields } from '../components/ReminderFields'
 
 const RUNNERS: { value: RunnerKind; label: string }[] = [
   { value: 'claude', label: 'Claude Code (claude -p)' },
@@ -123,8 +125,10 @@ export function SettingsPage() {
         <TextField label="Claude Code 실행 파일 경로 (비워 두면 자동 탐색)" value={draft.claudePath} onChange={(claudePath) => update({ claudePath })} />
         <TextField label="Codex 실행 파일 경로 (비워 두면 자동 탐색)" value={draft.codexPath} onChange={(codexPath) => update({ codexPath })} />
         <DataDirectoryField value={draft.dataDirectory} onChange={(dataDirectory) => update({ dataDirectory })} />
+        <ReminderFields value={draft} onChange={update} />
         <Button isLoading={isSaving} onClick={() => void save()}>저장</Button>
       </section>
+      <TopicSettings />
       <section className="card mt-6 flex items-center justify-between gap-6 p-6">
         <div>
           <p className="font-semibold">화면 테마</p>

@@ -1,5 +1,6 @@
 import taxonomyJson from '../../schemas/taxonomy.json'
 import type {
+  BuiltInTopic,
   Difficulty,
   QuestionCategory,
   QuestionFeedbackReason,
@@ -18,7 +19,8 @@ interface CategoryDefinition {
 
 export const FORMATS = taxonomyJson.formats as { value: QuestionFormat; label: string }[]
 export const CATEGORIES = taxonomyJson.categories as CategoryDefinition[]
-export const TOPICS = taxonomyJson.topics as { value: Topic; label: string }[]
+/** Built-in topics only; custom topics come from the data folder through listTopics. */
+export const TOPICS = taxonomyJson.topics as { value: BuiltInTopic; label: string }[]
 export const DIFFICULTIES = taxonomyJson.difficulties as { value: Difficulty; label: string }[]
 const SCENARIO_ROTATION = taxonomyJson.scenarioRotationByWeekday as Record<string, ScenarioCategory>
 
@@ -58,6 +60,7 @@ export function categoryLabel(value: QuestionCategory): string {
   return CATEGORIES.find((entry) => entry.value === value)?.label ?? value
 }
 
+/** Built-in label; a custom topic needs its definition (useTopics on screens, topicLabelOf in the main process). */
 export function topicLabel(value: Topic): string {
   return TOPICS.find((entry) => entry.value === value)?.label ?? value
 }

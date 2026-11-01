@@ -8,8 +8,10 @@ import { JobProgressPanel } from '../components/JobProgress'
 import { PageContainer } from '../components/PageHeader'
 import { QuestionStatement } from '../components/QuestionStatement'
 import { Button } from '../components/controls'
+import { InterviewAttemptNotice } from '../components/InterviewAttemptNotice'
 import { SolveView } from './SolveView'
 import { ResultView } from './ResultView'
+import { PostponedView } from './PostponedView'
 
 function GradingFailedPanel({ attempt, onReload }: { attempt: Attempt; onReload: () => void }) {
   const retryRequest = useRequest()
@@ -53,8 +55,11 @@ export function AttemptPage({ attemptId }: { attemptId: string }) {
   const { attempt, question } = data!
   if (!attempt || !question) return <PageContainer><ErrorPanel message="풀이 또는 문제를 찾을 수 없습니다." /></PageContainer>
 
+  // A mock interview question is answered on the interview screen, where its timer runs.
+  if (attempt.status === 'draft' && attempt.origin === 'interview') return <InterviewAttemptNotice attempt={attempt} />
   if (attempt.status === 'draft') return <SolveView attempt={attempt} question={question} />
   if (attempt.status === 'graded') return <ResultView attempt={attempt} question={question} />
+  if (attempt.status === 'postponed') return <PostponedView attempt={attempt} question={question} />
 
   return (
     <PageContainer>

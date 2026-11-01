@@ -10,8 +10,17 @@ import { runSkill } from './llm/skillRunner'
 import type { AppContext } from './services/appContext'
 import { getTodayView, prepareDaily, retryDailyItem, startDailyAttempt } from './services/daily'
 import { addAuthoringFeedback, addQuestionFeedback, setFeedbackActive } from './services/feedback'
+import { answerFollowUp, askInquiry, requestFollowUps, retryFollowUpEvaluation, retryInquiry } from './services/followUps'
 import { retryGrading, submitAttempt } from './services/grading'
+import { listPostponed, postponeAttempt, requestHint, startRetry } from './services/hints'
+import {
+  abandonInterview, answerConversation, beginTimedItem, finishConversation, getInterview, listInterviews, retryConversationTurn,
+  retryInterviewPreparation, retryInterviewReport, startConversationInterview, startTimedInterview, submitTimedItem,
+} from './services/interviews'
 import { createManualQuestion, deleteQuestion, generateQuestions, requestPractice, saveDraft, setReviewStatus, startAttempt } from './services/questionBank'
+import { getStreak } from './services/streak'
+import { listStudyNotes, updateStudyNote } from './services/studyNotes'
+import { addCustomTopic, deleteCustomTopic, listTopics, setTopicEnabled, updateCustomTopic } from './services/topics'
 
 type Handlers = { [Method in keyof InvokableApi]: (...args: Parameters<InvokableApi[Method]>) => Awaited<ReturnType<InvokableApi[Method]>> | ReturnType<InvokableApi[Method]> }
 
@@ -88,6 +97,35 @@ export function registerIpcHandlers(context: AppContext, updateSettings: (change
     retryGrading: (id) => retryGrading(context, id),
     listHistory: () => listHistory(repositories()),
     getStats: () => computeStats(repositories().attempts.readAll(), repositories().questions.readAll()),
+    listTopics: () => listTopics(repositories()),
+    setTopicEnabled: (value, enabled) => setTopicEnabled(context, value, enabled),
+    addCustomTopic: (input) => addCustomTopic(context, input),
+    updateCustomTopic: (value, input) => updateCustomTopic(context, value, input),
+    deleteCustomTopic: (value) => deleteCustomTopic(context, value),
+    requestHint: (attemptId, answer) => requestHint(context, attemptId, answer),
+    postponeAttempt: (attemptId, answer) => postponeAttempt(context, attemptId, answer),
+    listPostponed: () => listPostponed(repositories()),
+    startRetry: (postponedAttemptId) => startRetry(context, postponedAttemptId),
+    requestFollowUps: (attemptId) => requestFollowUps(context, attemptId),
+    answerFollowUp: (attemptId, followUpId, answer) => answerFollowUp(context, attemptId, followUpId, answer),
+    retryFollowUpEvaluation: (attemptId, followUpId) => retryFollowUpEvaluation(context, attemptId, followUpId),
+    askInquiry: (attemptId, question) => askInquiry(context, attemptId, question),
+    retryInquiry: (attemptId, inquiryId) => retryInquiry(context, attemptId, inquiryId),
+    listStudyNotes: () => listStudyNotes(repositories()),
+    updateStudyNote: (key, changes) => updateStudyNote(context, key, changes),
+    getStreak: () => getStreak(repositories()),
+    listInterviews: () => listInterviews(repositories()),
+    getInterview: (id) => getInterview(repositories(), id),
+    startTimedInterview: (options) => startTimedInterview(context, options),
+    retryInterviewPreparation: (id) => retryInterviewPreparation(context, id),
+    beginTimedItem: (id) => beginTimedItem(context, id),
+    submitTimedItem: (id, answer, timedOut) => submitTimedItem(context, id, answer, timedOut),
+    startConversationInterview: (options) => startConversationInterview(context, options),
+    answerConversation: (id, answer) => answerConversation(context, id, answer),
+    retryConversationTurn: (id) => retryConversationTurn(context, id),
+    finishConversation: (id) => finishConversation(context, id),
+    retryInterviewReport: (id) => retryInterviewReport(context, id),
+    abandonInterview: (id) => abandonInterview(context, id),
     listFeedback: () => repositories().feedback.readAll().sort(newestCreatedFirst),
     addQuestionFeedback: (input) => addQuestionFeedback(context, input),
     addAuthoringFeedback: (input) => addAuthoringFeedback(context, input),

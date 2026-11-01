@@ -24,8 +24,10 @@ function stripMetadata(question) {
 
 function findTaxonomyErrors(question) {
   const errors = []
+  // The schema leaves topic open for custom topics; seed questions must still use a built-in one.
+  if (!taxonomy.topics.some((entry) => entry.value === question.topic)) errors.push(`unknown topic ${question.topic}`)
   const category = taxonomy.categories.find((entry) => entry.value === question.category)
-  if (!category) return [`unknown category ${question.category}`]
+  if (!category) return [...errors, `unknown category ${question.category}`]
   if (category.format !== question.format) errors.push(`category ${question.category} does not belong to format ${question.format}`)
   if (JSON.stringify(category.perspectives) !== JSON.stringify(question.perspectives)) errors.push('perspectives differ from taxonomy.json')
   if (question.format === 'scenario' && question.category === 'code-review' && !question.situation.includes('```')) errors.push('code-review question has no code block')
