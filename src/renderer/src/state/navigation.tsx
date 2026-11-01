@@ -8,6 +8,7 @@ export type Route =
   | { name: 'interview'; interviewId: string }
   | { name: 'history' }
   | { name: 'notes' }
+  | { name: 'studyNote'; keyword: string }
   | { name: 'bank' }
   | { name: 'question'; questionId: string }
   | { name: 'feedback' }

@@ -14,6 +14,7 @@ import { PracticePage } from './pages/PracticePage'
 import { InterviewPage } from './pages/InterviewPage'
 import { InterviewSessionPage } from './pages/InterviewSessionPage'
 import { HistoryPage } from './pages/HistoryPage'
+import { StudyNotePage } from './pages/StudyNotePage'
 import { StudyNotesPage } from './pages/StudyNotesPage'
 import { BankPage } from './pages/BankPage'
 import { QuestionPage } from './pages/QuestionPage'
@@ -33,7 +34,7 @@ const MENU: { route: Route; label: string }[] = [
   { route: { name: 'settings' }, label: '설정' },
 ]
 
-const PARENT_MENU: Partial<Record<Route['name'], Route['name']>> = { attempt: 'today', question: 'bank', interview: 'interviews' }
+const PARENT_MENU: Partial<Record<Route['name'], Route['name']>> = { attempt: 'today', question: 'bank', interview: 'interviews', studyNote: 'notes' }
 
 function activeMenuName(route: Route): Route['name'] {
   return PARENT_MENU[route.name] ?? route.name
@@ -56,6 +57,7 @@ function CurrentPage({ route }: { route: Route }) {
     case 'interview': return <InterviewSessionPage key={route.interviewId} interviewId={route.interviewId} />
     case 'history': return <HistoryPage />
     case 'notes': return <StudyNotesPage />
+    case 'studyNote': return <StudyNotePage key={route.keyword} keyword={route.keyword} />
     case 'bank': return <BankPage />
     case 'question': return <QuestionPage key={route.questionId} questionId={route.questionId} />
     case 'feedback': return <FeedbackPage />

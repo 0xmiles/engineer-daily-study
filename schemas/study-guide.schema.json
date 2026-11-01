@@ -1,0 +1,35 @@
+{
+  "title": "StudyGuide",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "sections", "pitfalls", "selfCheck", "relatedKeywords"],
+  "properties": {
+    "summary": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["heading", "body"],
+        "properties": {
+          "heading": { "type": "string" },
+          "body": { "type": "string" }
+        }
+      }
+    },
+    "pitfalls": { "type": "array", "items": { "type": "string" } },
+    "selfCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "answer"],
+        "properties": {
+          "question": { "type": "string" },
+          "answer": { "type": "string" }
+        }
+      }
+    },
+    "relatedKeywords": { "type": "array", "items": { "type": "string" } }
+  }
+}

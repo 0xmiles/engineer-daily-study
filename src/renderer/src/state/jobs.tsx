@@ -62,6 +62,7 @@ function successAction(job: Job, navigate: Navigate) {
     case 'prepare-interview':
     case 'interview-turn':
     case 'interview-report': return { label: '면접 보기', onClick: () => navigate({ name: 'interview', interviewId: targetId }) }
+    case 'study-guide': return { label: '노트 보기', onClick: () => navigate({ name: 'studyNote', keyword: targetId }) }
     default: return undefined
   }
 }

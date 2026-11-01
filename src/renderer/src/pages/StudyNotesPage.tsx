@@ -48,7 +48,7 @@ export function StudyNotesPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="학습 노트" description="채점 결과와 모의 면접에서 추천된 공부거리를 모아 둡니다. 같은 주제가 여러 번 추천되면 하나로 묶입니다." />
+      <PageHeader title="학습 노트" description="채점 결과와 모의 면접에서 추천된 공부거리를 모아 둡니다. 카드를 누르면 정리된 설명을 읽으며 공부할 수 있습니다." />
       <div className="mb-5 flex items-end justify-between gap-4">
         <Tabs tabs={statusTabs} active={status} onChange={setStatus} />
         <div className="w-56"><Select label="주제" value={topic} options={topicOptions} allowEmpty="전체" onChange={setTopic} /></div>

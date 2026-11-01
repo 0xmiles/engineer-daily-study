@@ -262,6 +262,7 @@ export type JobKind =
   | 'prepare-interview'
   | 'interview-turn'
   | 'interview-report'
+  | 'study-guide'
 export type JobStatus = 'running' | 'succeeded' | 'failed' | 'cancelled'
 
 export interface Job {
@@ -284,6 +285,31 @@ export interface StudyNoteState {
   memo: string
   doneAt: string | null
   updatedAt: string
+  /** Absent until the tutor writes one; regenerating replaces it. */
+  guide?: StudyGuide
+}
+
+export interface StudyGuideSection {
+  heading: string
+  /** Markdown. */
+  body: string
+}
+
+export interface SelfCheckItem {
+  question: string
+  /** Markdown. */
+  answer: string
+}
+
+/** Study material the tutor writes for one study note keyword. */
+export interface StudyGuide {
+  summary: string
+  sections: StudyGuideSection[]
+  pitfalls: string[]
+  selfCheck: SelfCheckItem[]
+  relatedKeywords: string[]
+  generatedAt: string
+  runner: RunnerKind
 }
 
 export type InterviewMode = 'timed' | 'conversation'

@@ -13,6 +13,7 @@ import type {
   QuestionSpec,
   ReviewStatus,
   Settings,
+  StudyGuide,
   TimedInterview,
   TimedInterviewFormat,
   TimedInterviewItem,
@@ -106,6 +107,11 @@ export interface StudyNote {
   /** Recommended again after the user marked it done. */
   isReopened: boolean
   lastRecommendedAt: string
+  hasGuide: boolean
+}
+
+export interface StudyNoteDetail extends StudyNote {
+  guide: StudyGuide | null
 }
 
 export interface StudyNoteChanges {
@@ -203,7 +209,11 @@ export interface DailyStudyApi {
   retryInquiry(attemptId: string, inquiryId: string): Promise<string>
 
   listStudyNotes(): Promise<StudyNote[]>
+  /** Finds the note however the keyword is spelled; null when no grading or interview recommended it. */
+  getStudyNote(keyword: string): Promise<StudyNoteDetail | null>
   updateStudyNote(key: string, changes: StudyNoteChanges): Promise<void>
+  /** Writes the note's study material in the background, replacing any earlier one. Resolves to the job id. */
+  generateStudyGuide(key: string): Promise<string>
 
   getStreak(): Promise<StreakView>
 

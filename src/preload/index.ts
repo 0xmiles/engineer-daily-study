@@ -9,7 +9,7 @@ const INVOKABLE_METHODS = [
   'listTopics', 'setTopicEnabled', 'addCustomTopic', 'updateCustomTopic', 'deleteCustomTopic',
   'requestHint', 'postponeAttempt', 'listPostponed', 'startRetry',
   'requestFollowUps', 'answerFollowUp', 'retryFollowUpEvaluation', 'askInquiry', 'retryInquiry',
-  'listStudyNotes', 'updateStudyNote', 'getStreak',
+  'listStudyNotes', 'getStudyNote', 'updateStudyNote', 'generateStudyGuide', 'getStreak',
   'listInterviews', 'getInterview', 'startTimedInterview', 'retryInterviewPreparation', 'beginTimedItem', 'submitTimedItem',
   'startConversationInterview', 'answerConversation', 'retryConversationTurn', 'finishConversation', 'retryInterviewReport', 'abandonInterview',
   'listFeedback', 'addQuestionFeedback', 'addAuthoringFeedback', 'setFeedbackActive',

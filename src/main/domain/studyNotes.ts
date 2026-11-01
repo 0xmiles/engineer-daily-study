@@ -91,6 +91,7 @@ function toNote(key: string, recommendations: Recommendation[], state: StudyNote
     isDone: doneAt !== null && doneAt >= lastRecommendedAt,
     isReopened: doneAt !== null && doneAt < lastRecommendedAt,
     lastRecommendedAt,
+    hasGuide: Boolean(state?.guide),
   }
 }
 

@@ -11,6 +11,7 @@ import { QuestionFeedbackForm } from '../components/QuestionFeedbackForm'
 import { RubricView } from '../components/RubricView'
 import { DiscussionSection } from '../components/DiscussionSection'
 import { HintList } from '../components/HintPanel'
+import { StudyRecommendationList } from '../components/StudyRecommendationList'
 
 type ResultTab = 'weaknesses' | 'strengths' | 'model' | 'compare' | 'rubric' | 'study'
 
@@ -92,9 +93,7 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
         </div>
       )
     case 'study':
-      return <ul className="space-y-3">{grading.studyRecommendations.map((item, index) => (
-        <li key={index} className="card p-4"><p className="font-semibold">{item.keyword}</p><p className="mt-1 text-sm text-ink-muted">{item.reason}</p><p className="mt-2 text-xs text-ink-muted">검색어: <code>{item.searchQuery}</code></p></li>
-      ))}</ul>
+      return <StudyRecommendationList items={grading.studyRecommendations} />
   }
 }
 

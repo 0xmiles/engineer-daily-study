@@ -9,6 +9,7 @@ import { ErrorPanel, Spinner } from '../components/feedback'
 import { Markdown } from '../components/Markdown'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { InterviewBadges, MODE_LABELS, formatDuration, scoreTone, useNow } from '../components/InterviewShared'
+import { StudyRecommendationList } from '../components/StudyRecommendationList'
 
 const KIND_LABELS = { main: '본 질문', 'follow-up': '꼬리 질문', closing: '마무리' }
 
@@ -192,17 +193,9 @@ function ReportView({ report }: { report: InterviewReport }) {
         <ReportList title="잘한 점" items={report.strengths} />
         <ReportList title="보완할 점" items={report.weaknesses} />
       </div>
-      <section className="card p-5">
-        <p className="mb-3 font-semibold">추가 학습</p>
-        <ul className="space-y-3">
-          {report.studyRecommendations.map((item, index) => (
-            <li key={index}>
-              <p className="font-medium">{item.keyword}</p>
-              <p className="mt-0.5 text-sm text-ink-muted">{item.reason}</p>
-              <p className="mt-1 text-xs text-ink-muted">검색어: <code>{item.searchQuery}</code></p>
-            </li>
-          ))}
-        </ul>
+      <section>
+        <p className="mb-2 font-semibold">추가 학습</p>
+        <StudyRecommendationList items={report.studyRecommendations} />
       </section>
     </div>
   )

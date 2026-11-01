@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 
-export type SkillName = 'daily-study-question-author' | 'daily-study-grader' | 'daily-study-interviewer'
+export type SkillName = 'daily-study-question-author' | 'daily-study-grader' | 'daily-study-interviewer' | 'daily-study-tutor'
 export type SchemaName =
   | 'question-content'
   | 'grading-result'
@@ -13,6 +13,7 @@ export type SchemaName =
   | 'inquiry-answer'
   | 'interview-turn'
   | 'interview-report'
+  | 'study-guide'
 
 /** Packaged builds ship skills, schemas and seed under resources/; development reads them from the project root. */
 export function resourcesRoot(): string {

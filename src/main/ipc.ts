@@ -19,7 +19,8 @@ import {
 } from './services/interviews'
 import { createManualQuestion, deleteQuestion, generateQuestions, requestPractice, saveDraft, setReviewStatus, startAttempt } from './services/questionBank'
 import { getStreak } from './services/streak'
-import { listStudyNotes, updateStudyNote } from './services/studyNotes'
+import { generateStudyGuide } from './services/studyGuide'
+import { getStudyNote, listStudyNotes, updateStudyNote } from './services/studyNotes'
 import { addCustomTopic, deleteCustomTopic, listTopics, setTopicEnabled, updateCustomTopic } from './services/topics'
 
 type Handlers = { [Method in keyof InvokableApi]: (...args: Parameters<InvokableApi[Method]>) => Awaited<ReturnType<InvokableApi[Method]>> | ReturnType<InvokableApi[Method]> }
@@ -112,7 +113,9 @@ export function registerIpcHandlers(context: AppContext, updateSettings: (change
     askInquiry: (attemptId, question) => askInquiry(context, attemptId, question),
     retryInquiry: (attemptId, inquiryId) => retryInquiry(context, attemptId, inquiryId),
     listStudyNotes: () => listStudyNotes(repositories()),
+    getStudyNote: (keyword) => getStudyNote(repositories(), keyword),
     updateStudyNote: (key, changes) => updateStudyNote(context, key, changes),
+    generateStudyGuide: (key) => generateStudyGuide(context, key),
     getStreak: () => getStreak(repositories()),
     listInterviews: () => listInterviews(repositories()),
     getInterview: (id) => getInterview(repositories(), id),

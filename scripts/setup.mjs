@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const isWindows = process.platform === 'win32'
 const MINIMUM_NODE_MAJOR = 22
-const SKILLS = ['daily-study-question-author', 'daily-study-grader', 'daily-study-interviewer']
+const SKILLS = ['daily-study-question-author', 'daily-study-grader', 'daily-study-interviewer', 'daily-study-tutor']
 // Marks a folder this script copied, so a later run may replace it; any other real folder is the user's and is left alone.
 const COPY_MARKER = '.daily-study-copy'
 const SKILL_HOMES = [
