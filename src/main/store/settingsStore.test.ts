@@ -21,6 +21,11 @@ describe('validateSettingsChanges', () => {
     expect(() => validateSettingsChanges({ model: 'x%PATH%' })).toThrow('모델 이름')
   })
 
+  it('accepts only the three theme choices', () => {
+    for (const theme of ['light', 'dark', 'system']) expect(validateSettingsChanges({ theme })).toEqual({ theme })
+    expect(() => validateSettingsChanges({ theme: 'sepia' })).toThrow('화면 테마')
+  })
+
   it('rejects relative executable and data paths', () => {
     expect(() => validateSettingsChanges({ claudePath: 'claude' })).toThrow('Claude Code')
     expect(() => validateSettingsChanges({ dataDirectory: 'data' })).toThrow('데이터 폴더')

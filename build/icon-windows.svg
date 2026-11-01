@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Windows app icon: fills the canvas, because Windows draws no shared icon shape or margin of its own. -->
+  <rect width="1024" height="1024" rx="236" fill="#2F5D4A" />
+  <circle cx="512" cy="512" r="256" fill="none" stroke="#F6F4EF" stroke-width="61" />
+  <circle cx="512" cy="512" r="92" fill="#F6F4EF" />
+</svg>

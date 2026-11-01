@@ -17,12 +17,12 @@ function WeakestBuckets({ title, buckets, label }: { title: string; buckets: Sco
   return (
     <div className="card p-5">
       <p className="mb-3 text-sm font-semibold">{title}</p>
-      {buckets.length === 0 && <p className="text-xs text-slate-400">채점 기록이 쌓이면 표시됩니다.</p>}
+      {buckets.length === 0 && <p className="text-xs text-ink-faint">채점 기록이 쌓이면 표시됩니다.</p>}
       <ul className="space-y-2">
         {buckets.slice(0, VISIBLE_BUCKET_COUNT).map((bucket) => (
           <li key={bucket.key}>
             <div className="flex justify-between text-xs"><span>{label(bucket.key)}</span><span className="font-semibold">{bucket.averageScore}점 · {bucket.count}회</span></div>
-            <div className="mt-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${bucket.averageScore}%` }} /></div>
+            <div className="mt-1.5 h-1.5 rounded-full bg-sunken"><div className="h-1.5 rounded-full bg-accent" style={{ width: `${bucket.averageScore}%` }} /></div>
           </li>
         ))}
       </ul>
@@ -91,13 +91,13 @@ function HistoryEntryRow({ entry: { attempt, question } }: { entry: HistoryEntry
   const navigate = useNavigate()
   return (
     <li>
-      <button className="card flex w-full items-center gap-4 p-4 text-left transition hover:border-indigo-300" onClick={() => navigate({ name: 'attempt', attemptId: attempt.id })}>
+      <button className="card flex w-full items-center gap-4 p-5 text-left transition hover:border-accent/40" onClick={() => navigate({ name: 'attempt', attemptId: attempt.id })}>
         <div className="min-w-0 flex-1">
           {question && <QuestionBadges question={question} />}
-          <p className="mt-1.5 truncate font-semibold">{question?.title ?? '삭제된 문제'}</p>
-          <p className="mt-0.5 text-xs text-slate-500">{formatDateTime(attempt.submittedAt ?? attempt.createdAt)} · {attempt.origin === 'daily' ? '오늘의 문제' : '추가 풀이'}</p>
+          <p className="mt-2 truncate font-semibold">{question?.title ?? '삭제된 문제'}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{formatDateTime(attempt.submittedAt ?? attempt.createdAt)} · {attempt.origin === 'daily' ? '오늘의 문제' : '추가 풀이'}</p>
         </div>
-        {attempt.grading ? <span className="text-2xl font-bold">{attempt.grading.totalScore}<span className="text-sm text-slate-400">점</span></span> : <Badge>{STATUS_LABELS[attempt.status]}</Badge>}
+        {attempt.grading ? <span className="text-2xl font-bold tracking-tight">{attempt.grading.totalScore}<span className="text-sm font-medium text-ink-faint">점</span></span> : <Badge>{STATUS_LABELS[attempt.status]}</Badge>}
       </button>
     </li>
   )

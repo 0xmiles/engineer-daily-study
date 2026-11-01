@@ -48,7 +48,7 @@ export function ManualQuestionForm({ onDone }: { onDone: () => void }) {
         <label><span className="label">권장 최소 글자 수</span><input type="number" className="input" value={length.min} onChange={(event) => setLength({ ...length, min: Number(event.target.value) })} /></label>
         <label><span className="label">권장 최대 글자 수</span><input type="number" className="input" value={length.max} onChange={(event) => setLength({ ...length, max: Number(event.target.value) })} /></label>
       </div>
-      <p className="text-xs text-slate-500">저장하면 LLM이 채점 기준과 모범 답안을 작성합니다. 입력한 제목, 상황, 요구 사항은 그대로 유지됩니다.</p>
+      <p className="text-xs text-ink-muted">저장하면 LLM이 채점 기준과 모범 답안을 작성합니다. 입력한 제목, 상황, 요구 사항은 그대로 유지됩니다.</p>
       <Button disabled={!isComplete} isLoading={isSaving} onClick={() => void save()}>저장하고 채점 기준 작성</Button>
     </section>
   )

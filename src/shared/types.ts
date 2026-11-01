@@ -150,6 +150,7 @@ export interface Feedback {
 }
 
 export type RunnerKind = 'claude' | 'codex'
+export type ThemePreference = 'light' | 'dark' | 'system'
 
 export interface Settings {
   runner: RunnerKind
@@ -159,6 +160,7 @@ export interface Settings {
   claudePath: string
   codexPath: string
   model: string
+  theme: ThemePreference
 }
 
 export type JobKind = 'generate-question' | 'practice-question' | 'grade-answer' | 'draft-rubric' | 'prepare-daily' | 'test-runner'

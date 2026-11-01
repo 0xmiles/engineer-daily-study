@@ -25,10 +25,10 @@ export function JobProgressPanel({ job, title, hint }: { job: Job; title: string
   const [isCancelling, setIsCancelling] = useState(false)
   return (
     <div className="card flex flex-col items-center px-6 py-12 text-center">
-      <Spinner size={32} className="text-indigo-600" />
+      <Spinner size={32} className="text-accent" />
       <p className="mt-5 text-base font-semibold">{title}</p>
-      <p className="mt-1 text-sm text-slate-500">{job.stage} · {formatElapsed(elapsed)} 경과</p>
-      {hint && <p className="mt-3 max-w-md text-xs text-slate-400">{hint}</p>}
+      <p className="mt-1 text-sm text-ink-muted">{job.stage} · {formatElapsed(elapsed)} 경과</p>
+      {hint && <p className="mt-3 max-w-md text-xs text-ink-faint">{hint}</p>}
       <Button variant="secondary" className="mt-6" isLoading={isCancelling} onClick={() => { setIsCancelling(true); void api.cancelJob(job.id) }}>
         취소
       </Button>
@@ -40,12 +40,12 @@ function RunningJobRow({ job }: { job: Job }) {
   const elapsed = useElapsedSeconds(job.startedAt, true)
   return (
     <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
-      <Spinner size={14} className="shrink-0 text-indigo-600" />
+      <Spinner size={14} className="shrink-0 text-accent" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{job.label}</p>
-        <p className="text-xs text-slate-500">{job.stage} · {formatElapsed(elapsed)}</p>
+        <p className="text-xs text-ink-muted">{job.stage} · {formatElapsed(elapsed)}</p>
       </div>
-      <button className="text-xs text-slate-500 hover:text-rose-600" onClick={() => void api.cancelJob(job.id)}>취소</button>
+      <button className="text-xs text-ink-muted hover:text-bad" onClick={() => void api.cancelJob(job.id)}>취소</button>
     </li>
   )
 }
@@ -57,11 +57,11 @@ export function JobIndicator() {
   if (runningJobs.length === 0) return null
   return (
     <div className="relative">
-      <button className="flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" onClick={() => setIsOpen(!isOpen)}>
+      <button className="flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-ink" onClick={() => setIsOpen(!isOpen)}>
         <Spinner size={12} /> 진행 중인 작업 {runningJobs.length}개
       </button>
       {isOpen && (
-        <ul className="card absolute right-0 top-10 z-30 w-96 divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="card absolute right-0 top-10 z-30 w-96 divide-y divide-line shadow-lg">
           {runningJobs.map((job) => <RunningJobRow key={job.id} job={job} />)}
         </ul>
       )}

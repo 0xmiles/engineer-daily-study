@@ -19,9 +19,9 @@ type ShowToast = (toast: Omit<ToastItem, 'id'>) => void
 
 const AUTO_DISMISS_MILLISECONDS = { success: 3500, info: 3500, error: 8000 } satisfies Record<ToastTone, number>
 const TONE_CLASSES: Record<ToastTone, string> = {
-  success: 'border-emerald-300 dark:border-emerald-800',
-  error: 'border-rose-300 dark:border-rose-800',
-  info: 'border-slate-300 dark:border-slate-700',
+  success: 'border-l-good',
+  error: 'border-l-bad',
+  info: 'border-l-line-strong',
 }
 const TONE_ICONS: Record<ToastTone, string> = { success: '✓', error: '!', info: 'i' }
 
@@ -45,18 +45,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2">
         {toasts.map((toast) => (
-          <div key={toast.id} role="status" className={`card pointer-events-auto flex gap-3 border-l-4 p-4 ${TONE_CLASSES[toast.tone]}`}>
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold dark:bg-slate-800">{TONE_ICONS[toast.tone]}</span>
+          <div key={toast.id} role="status" className={`card pointer-events-auto flex gap-3 border-l-4 p-4 shadow-lg ${TONE_CLASSES[toast.tone]}`}>
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sunken text-xs font-bold">{TONE_ICONS[toast.tone]}</span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">{toast.title}</p>
-              {toast.message && <p className="mt-0.5 break-words text-xs text-slate-500 dark:text-slate-400">{toast.message}</p>}
+              {toast.message && <p className="mt-0.5 break-words text-xs text-ink-muted">{toast.message}</p>}
               {toast.action && (
-                <button className="mt-2 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400" onClick={() => { toast.action!.onClick(); dismiss(toast.id) }}>
+                <button className="mt-2 text-xs font-semibold text-accent-ink hover:underline" onClick={() => { toast.action!.onClick(); dismiss(toast.id) }}>
                   {toast.action.label}
                 </button>
               )}
             </div>
-            <button className="text-slate-400 hover:text-slate-600" onClick={() => dismiss(toast.id)} aria-label="닫기">×</button>
+            <button className="text-ink-faint hover:text-ink" onClick={() => dismiss(toast.id)} aria-label="닫기">×</button>
           </div>
         ))}
       </div>

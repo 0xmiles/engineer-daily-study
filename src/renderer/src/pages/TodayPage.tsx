@@ -20,10 +20,10 @@ const KIND_LABELS: Record<DailyItemKind, string> = { scenario: '오늘의 시나
 function attemptStatus(attempt: Attempt | null): { label: string; className: string; action: string } {
   if (!attempt) return { label: '미풀이', className: '', action: '풀기 시작' }
   switch (attempt.status) {
-    case 'draft': return { label: '작성 중', className: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', action: '이어 쓰기' }
-    case 'grading': return { label: '채점 중', className: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', action: '진행 상황 보기' }
-    case 'grading-failed': return { label: '채점 실패', className: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300', action: '확인하기' }
-    case 'graded': return { label: `${attempt.grading?.totalScore ?? 0}점`, className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300', action: '결과 보기' }
+    case 'draft': return { label: '작성 중', className: 'bg-warn-soft text-warn', action: '이어 쓰기' }
+    case 'grading': return { label: '채점 중', className: 'bg-info-soft text-info', action: '진행 상황 보기' }
+    case 'grading-failed': return { label: '채점 실패', className: 'bg-bad-soft text-bad', action: '확인하기' }
+    case 'graded': return { label: `${attempt.grading?.totalScore ?? 0}점`, className: 'bg-good-soft text-good', action: '결과 보기' }
   }
 }
 
@@ -43,10 +43,10 @@ function PendingItemCard({ item, isPreparing, onRetry, onPrepare }: PendingItemC
   }
   return (
     <div className="flex items-center gap-4">
-      {isPreparing ? <Spinner size={20} className="text-indigo-600" /> : null}
+      {isPreparing ? <Spinner size={20} className="text-accent" /> : null}
       <div className="flex-1">
         <p className="font-semibold">{isPreparing ? '문제를 만드는 중입니다' : '문제 준비 대기 중'}</p>
-        <p className="text-sm text-slate-500">{specText} · 문제 은행에 맞는 문제가 없어 새로 만듭니다. 1~2분 정도 걸립니다.</p>
+        <p className="mt-0.5 text-sm text-ink-muted">{specText} · 문제 은행에 맞는 문제가 없어 새로 만듭니다. 1~2분 정도 걸립니다.</p>
       </div>
       {!isPreparing && <Button variant="secondary" isLoading={request.isRunning} onClick={() => void request.run(onPrepare, PREPARE_FAILURE_TITLE)}>지금 준비</Button>}
     </div>
@@ -72,7 +72,7 @@ function ReadyItemCard({ item, onOpen, isOpening }: { item: TodayItemView; onOpe
     <div className="flex items-center gap-4">
       <div className="min-w-0 flex-1">
         <QuestionBadges question={item.question!} />
-        <p className="mt-2 text-lg font-semibold">{item.question!.title}</p>
+        <p className="mt-3 text-lg font-bold leading-snug tracking-tight">{item.question!.title}</p>
       </div>
       <Badge className={status.className || undefined}>{status.label}</Badge>
       <Button variant={item.attempt?.status === 'graded' ? 'secondary' : 'primary'} isLoading={isOpening} onClick={onOpen}>{status.action}</Button>
@@ -114,8 +114,8 @@ export function TodayPage() {
       {today && (
         <div className="space-y-3">
           {today.items.map((item, index) => (
-            <section key={index} className="card p-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">{KIND_LABELS[item.kind]}</p>
+            <section key={index} className="card p-6">
+              <p className="mb-4 text-xs font-semibold tracking-wide text-accent-ink">{KIND_LABELS[item.kind]}</p>
               {item.question
                 ? <ReadyItemCard item={item} isOpening={openingIndex === index} onOpen={() => void openItem(index)} />
                 : <PendingItemCard item={item} isPreparing={isPreparing} onRetry={() => api.retryDailyItem(today.date, index).then(reload)} onPrepare={prepare} />}

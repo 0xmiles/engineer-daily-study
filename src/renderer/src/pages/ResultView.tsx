@@ -22,30 +22,30 @@ const RESULT_TABS: { value: ResultTab; label: string }[] = [
 ]
 
 function scoreTone(score: number): string {
-  if (score >= 80) return 'text-emerald-600'
-  if (score >= 60) return 'text-sky-600'
-  return 'text-rose-600'
+  if (score >= 80) return 'text-good'
+  if (score >= 60) return 'text-info'
+  return 'text-bad'
 }
 
 function Quote({ text }: { text: string }) {
   if (!text) return null
-  return <blockquote className="mt-2 border-l-4 border-slate-300 pl-3 text-sm text-slate-500 dark:border-slate-700">“{text}”</blockquote>
+  return <blockquote className="mt-2 border-l-[3px] border-line-strong pl-3 text-sm text-ink-muted">“{text}”</blockquote>
 }
 
 function ScoreHeader({ grading }: { grading: ScoredGrading }) {
   const fullCount = grading.requiredCoverage.filter((item) => item.status === 'full').length
   return (
-    <section className="card p-6">
-      <div className="flex items-end gap-6">
+    <section className="card p-7">
+      <div className="flex items-end gap-8">
         <div>
-          <p className={`text-5xl font-bold ${scoreTone(grading.totalScore)}`}>{grading.totalScore}<span className="text-xl text-slate-400"> / 100</span></p>
-          <p className="mt-1 text-sm text-slate-500">필수 항목 {fullCount}/{grading.requiredCoverage.length} 충족 · {formatDateTime(grading.gradedAt)} 채점</p>
+          <p className={`text-5xl font-bold tracking-tight ${scoreTone(grading.totalScore)}`}>{grading.totalScore}<span className="text-xl font-medium text-ink-faint"> / 100</span></p>
+          <p className="mt-1 text-sm text-ink-muted">필수 항목 {fullCount}/{grading.requiredCoverage.length} 충족 · {formatDateTime(grading.gradedAt)} 채점</p>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2">
           {grading.perspectiveScores.map((item) => (
             <div key={item.perspective}>
               <div className="flex justify-between text-xs"><span>{item.perspective}</span><span className="font-semibold">{item.score}/10</span></div>
-              <div className="mt-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-2 rounded-full bg-indigo-500" style={{ width: `${item.score * 10}%` }} /></div>
+              <div className="mt-1.5 h-1.5 rounded-full bg-sunken"><div className="h-1.5 rounded-full bg-accent" style={{ width: `${item.score * 10}%` }} /></div>
             </div>
           ))}
         </div>
@@ -60,7 +60,7 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
   switch (tab) {
     case 'weaknesses':
       return <ul className="space-y-4">{grading.weaknesses.map((item, index) => (
-        <li key={index} className="card p-4"><p className="font-semibold">{item.summary}</p><Quote text={item.quote} /><p className="mt-2 text-sm"><span className="font-semibold text-indigo-600">보완 방법</span> {item.improvement}</p></li>
+        <li key={index} className="card p-4"><p className="font-semibold">{item.summary}</p><Quote text={item.quote} /><p className="mt-2 text-sm"><span className="font-semibold text-accent-ink">보완 방법</span> {item.improvement}</p></li>
       ))}</ul>
     case 'strengths':
       return <ul className="space-y-4">{grading.strengths.map((item, index) => (
@@ -79,7 +79,7 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
       return <RubricView question={question} grading={grading} />
     case 'study':
       return <ul className="space-y-3">{grading.studyRecommendations.map((item, index) => (
-        <li key={index} className="card p-4"><p className="font-semibold">{item.keyword}</p><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.reason}</p><p className="mt-2 text-xs text-slate-500">검색어: <code>{item.searchQuery}</code></p></li>
+        <li key={index} className="card p-4"><p className="font-semibold">{item.keyword}</p><p className="mt-1 text-sm text-ink-muted">{item.reason}</p><p className="mt-2 text-xs text-ink-muted">검색어: <code>{item.searchQuery}</code></p></li>
       ))}</ul>
   }
 }

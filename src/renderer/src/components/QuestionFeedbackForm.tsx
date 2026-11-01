@@ -31,19 +31,19 @@ export function QuestionFeedbackForm({ questionId }: { questionId: string }) {
     }
   }
 
-  if (isSent) return <p className="text-sm text-slate-500">피드백을 남겨 주셔서 감사합니다. 이후 출제에 반영됩니다.</p>
+  if (isSent) return <p className="text-sm text-ink-muted">피드백을 남겨 주셔서 감사합니다. 이후 출제에 반영됩니다.</p>
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
         {(['good', 'poor'] as const).map((value) => (
-          <button key={value} onClick={() => setRating(value)} className={`rounded-lg border px-3 py-1.5 text-sm ${rating === value ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-300 dark:border-slate-700'}`}>
+          <button key={value} onClick={() => setRating(value)} className={`rounded-xl border px-3 py-1.5 text-sm font-medium transition ${rating === value ? 'border-accent bg-accent-soft text-accent-ink' : 'border-line-strong text-ink-muted hover:text-ink'}`}>
             {value === 'good' ? '좋은 문제였어요' : '아쉬운 문제였어요'}
           </button>
         ))}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {FEEDBACK_REASONS.map((reason) => (
-          <button key={reason.value} onClick={() => toggleReason(reason.value)} className={`rounded-full border px-3 py-1 text-xs ${reasons.includes(reason.value) ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>
+          <button key={reason.value} onClick={() => toggleReason(reason.value)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${reasons.includes(reason.value) ? 'border-accent bg-accent text-accent-on' : 'border-line-strong text-ink-muted hover:text-ink'}`}>
             {reason.label}
           </button>
         ))}

@@ -1,7 +1,7 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, powerMonitor, shell } from 'electron'
+import { app, BrowserWindow, dialog, nativeTheme, powerMonitor, shell } from 'electron'
 import { IPC_EVENTS } from '@shared/api'
-import type { Settings } from '@shared/types'
+import type { Settings, ThemePreference } from '@shared/types'
 import { isAppUrl, loadAppPage } from './appUrl'
 import { JobManager, errorMessageOf } from './jobs/jobManager'
 import { seedQuestionsDirectory } from './llm/resources'
@@ -16,6 +16,14 @@ import { SettingsStore, defaultSettings } from './store/settingsStore'
 const MIDNIGHT_GRACE_MILLISECONDS = 5_000
 // Errors that mean the folder itself is unreachable (removed drive, lost permission), not that its contents are broken.
 const UNREACHABLE_FOLDER_CODES = new Set(['EACCES', 'EPERM', 'ENOENT', 'ENOTDIR', 'EROFS'])
+// The app was renamed from Daily Study; keeping its userData folder keeps the saved settings, including the data folder.
+const USER_DATA_FOLDER_NAME = 'Daily Study'
+// Matches --paper in the renderer theme, so the window never flashes another color before the page paints.
+const WINDOW_BACKGROUND = { light: '#F6F4EF', dark: '#161513' }
+// A packaged app takes its Dock icon from the bundle; `npm run dev` would otherwise show Electron's.
+const DEV_DOCK_ICON = join(__dirname, '../../build/icon.png')
+
+app.setPath('userData', join(app.getPath('appData'), USER_DATA_FOLDER_NAME))
 
 function broadcast(channel: string, payload?: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, payload)
@@ -26,6 +34,15 @@ function openRepositories(dataDirectory: string): Repositories {
   importSeedQuestions(repositories, dataDirectory, seedQuestionsDirectory())
   recoverInterruptedGradings(repositories)
   return repositories
+}
+
+/** The renderer's prefers-color-scheme follows themeSource, so this one switch restyles the page and the native controls. */
+function applyTheme(theme: ThemePreference): void {
+  nativeTheme.themeSource = theme
+}
+
+function windowBackground(): string {
+  return nativeTheme.shouldUseDarkColors ? WINDOW_BACKGROUND.dark : WINDOW_BACKGROUND.light
 }
 
 function isUnreachableFolder(error: unknown): boolean {
@@ -67,7 +84,9 @@ function createAppContext(settingsStore: SettingsStore): AppSetup {
     const nextRepositories = isDirectoryChange ? openRepositories(changes.dataDirectory!) : repositories
     const updated = settingsStore.update(changes)
     repositories = nextRepositories
-    context.notifyDataChanged()
+    if (changes.theme) applyTheme(updated.theme)
+    // A theme switch changes no data, so open screens (and a settings form being edited) keep their state.
+    if (Object.keys(changes).some((key) => key !== 'theme')) context.notifyDataChanged()
     return updated
   }
   return { context, updateSettings, startupWarning }
@@ -95,7 +114,8 @@ function createWindow(): BrowserWindow {
     height: 860,
     minWidth: 960,
     minHeight: 640,
-    title: 'Daily Study',
+    title: 'Folio',
+    backgroundColor: windowBackground(),
     show: false,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true },
   })
@@ -141,6 +161,11 @@ app.whenReady().then(() => {
   const settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'), defaultSettings(app.getPath('documents')))
   const { context, updateSettings, startupWarning } = createAppContext(settingsStore)
   registerIpcHandlers(context, updateSettings)
+  applyTheme(settingsStore.get().theme)
+  nativeTheme.on('updated', () => {
+    for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(windowBackground())
+  })
+  if (!app.isPackaged) app.dock?.setIcon(DEV_DOCK_ICON)
   const window = createWindow()
   if (startupWarning) showStartupWarning(window, startupWarning)
   prepareDaily(context)

@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ToastProvider } from './components/toast'
+import { FolioMark } from './components/FolioMark'
 import { JobIndicator } from './components/JobProgress'
+import { ThemeToggle } from './components/ThemeToggle'
 import { JobsProvider } from './state/jobs'
 import { NavigationContext, type Route } from './state/navigation'
+import { ThemeProvider } from './state/theme'
 import { TodayPage } from './pages/TodayPage'
 import { AttemptPage } from './pages/AttemptPage'
 import { PracticePage } from './pages/PracticePage'
@@ -11,6 +14,8 @@ import { BankPage } from './pages/BankPage'
 import { QuestionPage } from './pages/QuestionPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { SettingsPage } from './pages/SettingsPage'
+
+const APP_NAME = 'Folio'
 
 const MENU: { route: Route; label: string }[] = [
   { route: { name: 'today' }, label: '오늘의 문제' },
@@ -22,6 +27,18 @@ const MENU: { route: Route; label: string }[] = [
 ]
 
 const PARENT_MENU: Partial<Record<Route['name'], Route['name']>> = { attempt: 'today', question: 'bank' }
+
+function activeMenuName(route: Route): Route['name'] {
+  return PARENT_MENU[route.name] ?? route.name
+}
+
+/** The window title names the open menu, e.g. "Folio — 오늘의 문제". */
+function useWindowTitle(route: Route): void {
+  const label = MENU.find((item) => item.route.name === activeMenuName(route))?.label
+  useEffect(() => {
+    document.title = label ? `${APP_NAME} — ${label}` : APP_NAME
+  }, [label])
+}
 
 function CurrentPage({ route }: { route: Route }) {
   switch (route.name) {
@@ -37,42 +54,49 @@ function CurrentPage({ route }: { route: Route }) {
 }
 
 function Sidebar({ route, navigate }: { route: Route; navigate: (route: Route) => void }) {
-  const activeName = PARENT_MENU[route.name] ?? route.name
+  const activeName = activeMenuName(route)
   return (
-    <nav className="flex w-52 shrink-0 flex-col border-r border-slate-200 bg-white px-3 py-5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="px-3 pb-5 text-lg font-bold">Daily Study</p>
+    <nav className="flex w-56 shrink-0 flex-col gap-0.5 border-r border-line bg-sidebar px-3 py-5">
+      <div className="flex items-center gap-2.5 px-3 pb-6">
+        <FolioMark size={24} />
+        <span className="text-[17px] font-bold tracking-tight">{APP_NAME}</span>
+      </div>
       {MENU.map((item) => (
         <button
           key={item.route.name}
           onClick={() => navigate(item.route)}
-          className={`rounded-lg px-3 py-2 text-left text-sm font-medium transition ${activeName === item.route.name ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+          className={`rounded-lg px-3 py-2 text-left text-sm transition ${activeName === item.route.name ? 'bg-line/60 font-semibold text-ink' : 'font-medium text-ink-muted hover:bg-line/40 hover:text-ink'}`}
         >
           {item.label}
         </button>
       ))}
+      <ThemeToggle className="mt-auto" />
     </nav>
   )
 }
 
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'today' })
+  useWindowTitle(route)
   return (
     <ToastProvider>
-      <NavigationContext.Provider value={setRoute}>
-        <JobsProvider>
-          <div className="flex h-full">
-            <Sidebar route={route} navigate={setRoute} />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <header className="flex h-12 shrink-0 items-center justify-end border-b border-slate-200 px-6 dark:border-slate-800">
-                <JobIndicator />
-              </header>
-              <main className="min-h-0 flex-1 overflow-y-auto">
-                <CurrentPage route={route} />
-              </main>
+      <ThemeProvider>
+        <NavigationContext.Provider value={setRoute}>
+          <JobsProvider>
+            <div className="flex h-full">
+              <Sidebar route={route} navigate={setRoute} />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <header className="flex h-12 shrink-0 items-center justify-end px-6">
+                  <JobIndicator />
+                </header>
+                <main className="min-h-0 flex-1 overflow-y-auto">
+                  <CurrentPage route={route} />
+                </main>
+              </div>
             </div>
-          </div>
-        </JobsProvider>
-      </NavigationContext.Provider>
+          </JobsProvider>
+        </NavigationContext.Provider>
+      </ThemeProvider>
     </ToastProvider>
   )
 }

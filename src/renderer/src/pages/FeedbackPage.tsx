@@ -77,7 +77,7 @@ function FeedbackRow({ feedback }: { feedback: Feedback }) {
           <Badge>적용 범위: {scopeText(feedback.scope)}</Badge>
         </div>
         <p className="mt-2 text-sm">{describe(feedback)}</p>
-        <p className="mt-1 text-xs text-slate-400">{formatDateTime(feedback.createdAt)}</p>
+        <p className="mt-1 text-xs text-ink-faint">{formatDateTime(feedback.createdAt)}</p>
       </div>
       <Button variant="secondary" isLoading={isUpdating} onClick={() => void toggle()}>{feedback.active ? '반영 중지' : '다시 반영'}</Button>
     </li>
@@ -90,7 +90,7 @@ export function FeedbackPage() {
     <PageContainer>
       <PageHeader title="출제 피드백" description="출제 방식에 대한 의견을 남기면, 적용 범위가 맞는 최근 피드백 20개가 문제를 만들 때 출제 지침으로 반영됩니다." />
       <AuthoringFeedbackForm />
-      <h2 className="mb-3 mt-8 text-sm font-semibold text-slate-500">남긴 피드백</h2>
+      <h2 className="mb-3 mt-10 text-sm font-semibold text-ink-muted">남긴 피드백</h2>
       {isLoading && <SkeletonList rows={2} />}
       {error && <ErrorPanel message={error} onRetry={reload} />}
       {feedbacks && feedbacks.length === 0 && <EmptyState title="아직 남긴 피드백이 없습니다" description="문제를 풀고 채점 결과 화면에서 문제 평가를 남기거나, 위에서 출제 방식 의견을 작성하세요." />}

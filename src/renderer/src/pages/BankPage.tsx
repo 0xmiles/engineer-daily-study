@@ -38,7 +38,7 @@ function GenerateForm({ onDone }: { onDone: () => void }) {
         <span className="label">개수 (최대 5)</span>
         <input type="number" min={1} max={5} className="input" value={count} onChange={(event) => setCount(Math.min(5, Math.max(1, Number(event.target.value))))} />
       </label>
-      <p className="text-xs text-slate-500">생성한 문제는 검수 대기 상태로 문제 은행에 추가되고, 출제 피드백이 반영됩니다.</p>
+      <p className="text-xs text-ink-muted">생성한 문제는 검수 대기 상태로 문제 은행에 추가되고, 출제 피드백이 반영됩니다.</p>
       <Button isLoading={isStarting} onClick={() => void start()}>생성 시작</Button>
     </section>
   )
@@ -61,17 +61,17 @@ function QuestionList({ questions }: { questions: Question[] }) {
         <Select label="주제" value={topic} options={TOPICS} allowEmpty="전체" onChange={setTopic} />
         <Select label="출제 여부" value={servedFilter} options={[{ value: 'all', label: '전체' }, { value: 'unserved', label: '아직 출제 안 됨' }, { value: 'served', label: '출제됨' }]} onChange={(value) => setServedFilter((value || 'all') as typeof servedFilter)} />
       </div>
-      <p className="mb-2 text-xs text-slate-500">{visible.length}개 문제</p>
+      <p className="mb-2 text-xs text-ink-muted">{visible.length}개 문제</p>
       {visible.length === 0 && <EmptyState title="조건에 맞는 문제가 없습니다" description="필터를 바꾸거나 새 문제를 생성하세요." />}
       <ul className="space-y-2">
         {visible.map((question) => (
           <li key={question.id}>
-            <button className="card flex w-full items-center gap-4 p-4 text-left transition hover:border-indigo-300" onClick={() => navigate({ name: 'question', questionId: question.id })}>
+            <button className="card flex w-full items-center gap-4 p-5 text-left transition hover:border-accent/40" onClick={() => navigate({ name: 'question', questionId: question.id })}>
               <div className="min-w-0 flex-1">
                 <QuestionBadges question={question} showSource />
-                <p className="mt-1.5 truncate font-semibold">{question.title}</p>
+                <p className="mt-2 truncate font-semibold">{question.title}</p>
               </div>
-              <span className="text-xs text-slate-500">{question.servedAt ? '출제됨' : '대기'}</span>
+              <span className="text-xs text-ink-muted">{question.servedAt ? '출제됨' : '대기'}</span>
             </button>
           </li>
         ))}

@@ -1,4 +1,4 @@
-# Daily Study
+# Folio
 
 백엔드 개발자가 매일 실무 시나리오형·CS 개념형 서술형 문제를 풀고, LLM 감독관에게 채점과 학습 피드백을 받는 데스크톱 앱입니다(macOS, Windows).
 
@@ -22,7 +22,8 @@
 | `seed/questions/` | 초기 문제 은행 56문제 |
 | `src/main/` | Electron 메인 프로세스: 저장, 출제, 채점, LLM 실행 |
 | `src/renderer/` | 화면(React) |
-| `scripts/` | 설치(`setup.mjs`), 문제 은행 검증(`validate-seed.mjs`) |
+| `scripts/` | 설치(`setup.mjs`), 문제 은행 검증(`validate-seed.mjs`), 앱 아이콘 렌더링(`render-icons.mjs`) |
+| `build/` | 앱 아이콘 원본(SVG)과 설치 파일에 들어가는 PNG |
 
 ## 개발 명령
 
@@ -33,3 +34,4 @@
 | `npm run typecheck` | 타입 검사 |
 | `npm run validate:seed` | 초기 문제 은행 형식·중복 검사 |
 | `npm run dist:mac` / `npm run dist:win` | 설치 파일 빌드 |
+| `npx electron scripts/render-icons.mjs` | `build/` 의 아이콘 SVG를 수정한 뒤 PNG 다시 만들기 |

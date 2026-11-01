@@ -1,4 +1,4 @@
-// npm run setup: links the Daily Study skills into Claude Code and Codex, then checks the CLIs.
+// npm run setup: links the Folio skills into Claude Code and Codex, then checks the CLIs.
 import { existsSync, lstatSync, mkdirSync, rmSync, rmdirSync, symlinkSync, cpSync, readlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
@@ -98,7 +98,7 @@ function checkRunner(command, runnerName) {
   return isAvailable
 }
 
-console.log('Daily Study 설정을 시작합니다.\n')
+console.log('Folio 설정을 시작합니다.\n')
 checkNodeVersion()
 installSkills()
 const hasClaude = checkRunner('claude', 'Claude Code')

@@ -49,7 +49,7 @@ export function QuestionPage({ questionId }: { questionId: string }) {
       </div>
       <div className="card p-6">
         <QuestionStatement question={question} showSource />
-        <p className="mt-4 text-xs text-slate-400">만든 시각 {formatDateTime(question.createdAt)}{question.servedAt ? ` · 출제 ${formatDateTime(question.servedAt)}` : ''}</p>
+        <p className="mt-4 text-xs text-ink-faint">만든 시각 {formatDateTime(question.createdAt)}{question.servedAt ? ` · 출제 ${formatDateTime(question.servedAt)}` : ''}</p>
       </div>
       <details className="card mt-4 p-5">
         <summary className="cursor-pointer font-semibold">채점 기준 보기 (스포일러 주의)</summary>

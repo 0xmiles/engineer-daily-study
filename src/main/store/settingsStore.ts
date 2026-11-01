@@ -12,8 +12,11 @@ export function defaultSettings(documentsDirectory: string): Settings {
     claudePath: '',
     codexPath: '',
     model: '',
+    theme: 'system',
   }
 }
+
+const THEMES: readonly unknown[] = ['light', 'dark', 'system'] satisfies Settings['theme'][]
 
 // Windows `.cmd` wrappers re-expand their arguments, so the model name must not carry shell metacharacters,
 // and a leading dash would be read by the CLI as another option.
@@ -32,6 +35,7 @@ const SETTING_RULES: { [Key in keyof Settings]: { isValid: (value: unknown) => b
     isValid: (value) => typeof value === 'string' && MODEL_NAME_PATTERN.test(value),
     message: '모델 이름에는 영문, 숫자와 . _ : / - [ ] 만 쓸 수 있고, - 로 시작할 수 없습니다.',
   },
+  theme: { isValid: (value) => THEMES.includes(value), message: '화면 테마는 light, dark, system 중 하나여야 합니다.' },
 }
 
 function isSettingKey(key: string): key is keyof Settings {

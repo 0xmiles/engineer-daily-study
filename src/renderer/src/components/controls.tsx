@@ -4,10 +4,10 @@ import { Spinner } from './feedback'
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-indigo-400',
-  secondary: 'border border-slate-300 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800',
-  ghost: 'hover:bg-slate-100 dark:hover:bg-slate-800',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700 disabled:bg-rose-400',
+  primary: 'bg-accent text-accent-on hover:bg-accent/90',
+  secondary: 'border border-line-strong bg-surface text-ink hover:bg-sunken',
+  ghost: 'text-ink-muted hover:bg-sunken hover:text-ink',
+  danger: 'bg-bad text-paper hover:bg-bad/90',
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -21,7 +21,7 @@ export function Button({ variant = 'primary', isLoading = false, disabled, child
     <button
       {...rest}
       disabled={disabled || isLoading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-70 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${className}`}
     >
       {isLoading && <Spinner size={14} />}
       {children}
@@ -51,10 +51,10 @@ export function ConfirmDialog({ isOpen, title, description, confirmLabel, tone =
 
   if (!isOpen) return null
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-6" onClick={onCancel}>
-      <div className="card w-full max-w-md p-6" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <h2 className="text-lg font-bold">{title}</h2>
-        <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</div>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim/40 p-6 backdrop-blur-[2px]" onClick={onCancel}>
+      <div className="card w-full max-w-md p-6 shadow-xl" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+        <div className="mt-2 text-sm leading-6 text-ink-muted">{description}</div>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>취소</Button>
           <Button variant={tone} onClick={onConfirm} autoFocus>{confirmLabel}</Button>
@@ -66,14 +66,14 @@ export function ConfirmDialog({ isOpen, title, description, confirmLabel, tone =
 
 export function Tabs<T extends string>({ tabs, active, onChange }: { tabs: { value: T; label: string }[]; active: T; onChange: (value: T) => void }) {
   return (
-    <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
+    <div className="flex gap-1 border-b border-line" role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.value}
           role="tab"
           aria-selected={tab.value === active}
           onClick={() => onChange(tab.value)}
-          className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${tab.value === active ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+          className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${tab.value === active ? 'border-accent text-accent-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
         >
           {tab.label}
         </button>

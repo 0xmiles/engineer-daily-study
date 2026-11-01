@@ -10,6 +10,7 @@ import { useToast } from '../components/toast'
 import { Button, Select } from '../components/controls'
 import { ErrorPanel, PageLoading, Spinner } from '../components/feedback'
 import { PageContainer, PageHeader } from '../components/PageHeader'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 const RUNNERS: { value: RunnerKind; label: string }[] = [
   { value: 'claude', label: 'Claude Code (claude -p)' },
@@ -22,7 +23,7 @@ const DAILY_COUNT_OPTIONS: { value: '2' | '3'; label: string }[] = [
 ]
 
 function RunnerLocation({ label, path }: { label: string; path: string | null }) {
-  return <li>{label}: {path ?? <span className="text-rose-600">찾을 수 없음</span>}</li>
+  return <li>{label}: {path ?? <span className="text-bad">찾을 수 없음</span>}</li>
 }
 
 function RunnerTest() {
@@ -49,8 +50,8 @@ function RunnerTest() {
       )}
       <div className="flex items-center gap-3">
         <Button variant="secondary" isLoading={testRequest.isRunning || isTestRunning} onClick={() => void startTest()}>연결 테스트</Button>
-        {isTestRunning && <span className="flex items-center gap-1 text-xs text-slate-500"><Spinner size={12} /> {job.stage}</span>}
-        {job?.status === 'succeeded' && <span className="text-sm text-emerald-600">연결되었습니다. 출제와 채점을 사용할 수 있습니다.</span>}
+        {isTestRunning && <span className="flex items-center gap-1 text-xs text-ink-muted"><Spinner size={12} /> {job.stage}</span>}
+        {job?.status === 'succeeded' && <span className="text-sm text-good">연결되었습니다. 출제와 채점을 사용할 수 있습니다.</span>}
       </div>
       {job?.status === 'failed' && <ErrorPanel message={job.error ?? '연결 테스트에 실패했습니다.'} detail={job.errorDetail} />}
     </section>
@@ -70,7 +71,7 @@ function DataDirectoryField({ value, onChange }: { value: string; onChange: (dat
         <input id="data-directory" className="input" value={value} onChange={(event) => onChange(event.target.value)} />
         <Button variant="secondary" className="shrink-0" isLoading={chooseRequest.isRunning} onClick={() => void choose()}>폴더 선택</Button>
       </div>
-      <p className="mt-1 text-xs text-slate-500">폴더를 바꾸면 기존 기록은 옮겨지지 않습니다. 기존 폴더의 파일을 새 폴더로 직접 복사해야 합니다.</p>
+      <p className="mt-1.5 text-xs text-ink-muted">폴더를 바꾸면 기존 기록은 옮겨지지 않습니다. 기존 폴더의 파일을 새 폴더로 직접 복사해야 합니다.</p>
     </div>
   )
 }
@@ -94,8 +95,10 @@ function useSettingsDraft() {
     if (saved) setDraft(saved)
   }, [saved])
 
+  // The theme is saved the moment it is picked, so the draft's copy may be stale and must not overwrite it.
   const save = async (): Promise<void> => {
-    const savedSettings = await saveRequest.run(() => api.saveSettings(draft!), '설정을 저장하지 못했습니다')
+    const { theme: _theme, ...changes } = draft!
+    const savedSettings = await saveRequest.run(() => api.saveSettings(changes), '설정을 저장하지 못했습니다')
     if (!savedSettings) return
     setDraft(savedSettings)
     showToast({ tone: 'success', title: '설정을 저장했습니다', message: '난이도와 문제 수는 내일 문제부터 적용됩니다.' })
@@ -121,6 +124,13 @@ export function SettingsPage() {
         <TextField label="Codex 실행 파일 경로 (비워 두면 자동 탐색)" value={draft.codexPath} onChange={(codexPath) => update({ codexPath })} />
         <DataDirectoryField value={draft.dataDirectory} onChange={(dataDirectory) => update({ dataDirectory })} />
         <Button isLoading={isSaving} onClick={() => void save()}>저장</Button>
+      </section>
+      <section className="card mt-6 flex items-center justify-between gap-6 p-6">
+        <div>
+          <p className="font-semibold">화면 테마</p>
+          <p className="mt-1 text-xs text-ink-muted">고르는 즉시 적용됩니다. 시스템을 고르면 OS 설정을 따릅니다.</p>
+        </div>
+        <ThemeToggle className="w-64 shrink-0" />
       </section>
       <div className="mt-6"><RunnerTest /></div>
     </PageContainer>

@@ -56,14 +56,14 @@ function useSaveOnLeave(flushPending: () => void): void {
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state.kind === 'saving') return <span className="flex items-center gap-1"><Spinner size={12} /> 저장 중</span>
   if (state.kind === 'saved') return <span>자동 저장됨 · {formatDateTime(state.at)}</span>
-  if (state.kind === 'failed') return <span className="text-rose-600">저장하지 못했습니다. Cmd/Ctrl + S 로 다시 저장하세요.</span>
+  if (state.kind === 'failed') return <span className="text-bad">저장하지 못했습니다. Cmd/Ctrl + S 로 다시 저장하세요.</span>
   return <span>입력하면 자동으로 저장됩니다</span>
 }
 
 function lengthTone(count: number, recommendedLength: Question['recommendedLength']): string {
-  if (count < recommendedLength.min) return 'text-slate-500'
-  if (count > recommendedLength.max) return 'text-amber-600'
-  return 'text-emerald-600'
+  if (count < recommendedLength.min) return 'text-ink-muted'
+  if (count > recommendedLength.max) return 'text-warn'
+  return 'text-good'
 }
 
 function LengthMeter({ answer, question }: { answer: string; question: Question }) {
@@ -125,13 +125,13 @@ function AnswerEditor({ mode, answer, hasAnswer, isSubmitting, onChange }: Answe
   if (mode === 'preview') {
     return (
       <div className="card mt-4 min-h-0 flex-1 overflow-y-auto p-5">
-        {hasAnswer ? <Markdown text={answer} /> : <p className="text-sm text-slate-400">작성한 내용이 없습니다.</p>}
+        {hasAnswer ? <Markdown text={answer} /> : <p className="text-sm text-ink-faint">작성한 내용이 없습니다.</p>}
       </div>
     )
   }
   return (
     <textarea
-      className="input mt-4 min-h-0 flex-1 resize-none font-mono text-[14px] leading-7"
+      className="input mt-4 min-h-0 flex-1 resize-none px-5 py-4 text-[15px] leading-7"
       placeholder={'요구 사항 번호에 맞춰 답안을 작성하세요. 마크다운을 쓸 수 있습니다.\n\n### 1. ...'}
       value={answer}
       onChange={(event) => onChange(event.target.value)}
@@ -166,7 +166,7 @@ interface EditorFooterProps {
 
 function EditorFooter({ saveState, isSubmitting, hasAnswer, onRequestSubmit }: EditorFooterProps) {
   return (
-    <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+    <div className="mt-4 flex items-center justify-between text-xs text-ink-muted">
       <SaveIndicator state={saveState} />
       <Button isLoading={isSubmitting} disabled={!hasAnswer} onClick={onRequestSubmit}>제출하기 (Cmd/Ctrl + Enter)</Button>
     </div>
@@ -205,9 +205,9 @@ export function SolveView({ attempt, question }: { attempt: Attempt; question: Q
   }
 
   return (
-    <div className="grid h-full grid-cols-2 divide-x divide-slate-200 dark:divide-slate-800">
-      <div className="overflow-y-auto px-8 py-8"><QuestionStatement question={question} /></div>
-      <div className="flex min-h-0 flex-col px-8 py-6">
+    <div className="grid h-full grid-cols-2 divide-x divide-line">
+      <div className="overflow-y-auto px-10 pb-10 pt-4"><QuestionStatement question={question} /></div>
+      <div className="flex min-h-0 flex-col px-8 pb-6 pt-2">
         <EditorHeader mode={mode} onModeChange={setMode} answer={answer} question={question} />
         <AnswerEditor mode={mode} answer={answer} hasAnswer={hasAnswer} isSubmitting={isSubmitting} onChange={changeAnswer} />
         <EditorFooter saveState={saveState} isSubmitting={isSubmitting} hasAnswer={hasAnswer} onRequestSubmit={() => setIsConfirmOpen(true)} />
