@@ -67,14 +67,14 @@ function lengthTone(count: number, recommendedLength: Question['recommendedLengt
   return 'text-good'
 }
 
-function LengthMeter({ answer, question }: { answer: string; question: Question }) {
+export function LengthMeter({ answer, question }: { answer: string; question: Question }) {
   const count = countCharacters(answer)
   const { min, max } = question.recommendedLength
   return <span className={`text-xs font-medium ${lengthTone(count, question.recommendedLength)}`}>공백 제외 {count}자 / 권장 {min}~{max}자</span>
 }
 
 /** Stays submitting after success: the attempt moves to grading and the parent page replaces this view. */
-function useSubmitAttempt(attemptId: string, cancelPendingSave: () => void) {
+export function useSubmitAttempt(attemptId: string, cancelPendingSave: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const showToast = useToast()
   const submit = async (answer: string): Promise<void> => {
@@ -96,7 +96,7 @@ interface EditorShortcuts {
   canSubmit: boolean
 }
 
-function useEditorShortcuts({ onSave, onRequestSubmit, canSubmit }: EditorShortcuts): void {
+export function useEditorShortcuts({ onSave, onRequestSubmit, canSubmit }: EditorShortcuts): void {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent): void => {
       if (!(event.metaKey || event.ctrlKey)) return
@@ -165,7 +165,7 @@ interface EditorFooterProps {
   onRequestSubmit: () => void
 }
 
-function EditorFooter({ saveState, isSubmitting, hasAnswer, onRequestSubmit }: EditorFooterProps) {
+export function EditorFooter({ saveState, isSubmitting, hasAnswer, onRequestSubmit }: EditorFooterProps) {
   return (
     <div className="mt-4 flex items-center justify-between text-xs text-ink-muted">
       <SaveIndicator state={saveState} />
@@ -174,7 +174,7 @@ function EditorFooter({ saveState, isSubmitting, hasAnswer, onRequestSubmit }: E
   )
 }
 
-function SubmitConfirmDialog({ isOpen, onConfirm, onCancel }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void }) {
+export function SubmitConfirmDialog({ isOpen, onConfirm, onCancel }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void }) {
   return (
     <ConfirmDialog
       isOpen={isOpen}

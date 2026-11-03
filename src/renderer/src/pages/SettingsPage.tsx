@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RunnerStatus } from '@shared/api'
 import type { Difficulty, RunnerKind, Settings } from '@shared/types'
+import { DAILY_SHORT_ANSWER_COUNT } from '@shared/rules'
 import { DIFFICULTIES } from '@shared/taxonomy'
 import { api } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
@@ -119,8 +120,9 @@ export function SettingsPage() {
         <div className="grid grid-cols-3 gap-3">
           <Select label="LLM 실행기" value={draft.runner} options={RUNNERS} onChange={(runner) => update({ runner: runner as RunnerKind })} />
           <Select label="기본 난이도" value={draft.difficulty} options={DIFFICULTIES} onChange={(difficulty) => update({ difficulty: difficulty as Difficulty })} />
-          <Select label="하루 문제 수" value={String(draft.dailyCount) as '2' | '3'} options={DAILY_COUNT_OPTIONS} onChange={(count) => update({ dailyCount: Number(count) as 2 | 3 })} />
+          <Select label="하루 서술형 문제 수" value={String(draft.dailyCount) as '2' | '3'} options={DAILY_COUNT_OPTIONS} onChange={(count) => update({ dailyCount: Number(count) as 2 | 3 })} />
         </div>
+        <p className="text-xs text-ink-muted">단답형 {DAILY_SHORT_ANSWER_COUNT}문제는 서술형 문제와 별도로 매일 함께 나옵니다.</p>
         <TextField label="모델 (비워 두면 CLI 기본 모델)" value={draft.model} onChange={(model) => update({ model })} placeholder="예: opus, sonnet, gpt-5" />
         <TextField label="Claude Code 실행 파일 경로 (비워 두면 자동 탐색)" value={draft.claudePath} onChange={(claudePath) => update({ claudePath })} />
         <TextField label="Codex 실행 파일 경로 (비워 두면 자동 탐색)" value={draft.codexPath} onChange={(codexPath) => update({ codexPath })} />

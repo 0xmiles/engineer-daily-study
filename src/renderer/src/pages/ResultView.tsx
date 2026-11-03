@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Attempt, Question, ScoredGrading } from '@shared/types'
+import { isShortAnswer } from '@shared/taxonomy'
 import { api, errorMessage, formatDateTime } from '../lib/api'
 import { useNavigate } from '../state/navigation'
 import { useToast } from '../components/toast'
@@ -24,6 +25,14 @@ const RESULT_TABS: { value: ResultTab; label: string }[] = [
   { value: 'study', label: '추가 학습' },
 ]
 
+// Weaknesses and strengths stay empty for most short answers; the verdict comment in the header covers them.
+const SHORT_ANSWER_TABS = RESULT_TABS.filter((tab) => tab.value !== 'weaknesses' && tab.value !== 'strengths')
+
+function shortAnswerVerdict(totalScore: number): string {
+  if (totalScore === 100) return '정답'
+  return totalScore === 0 ? '오답' : '부분 정답'
+}
+
 function scoreTone(score: number): string {
   if (score >= 80) return 'text-good'
   if (score >= 60) return 'text-info'
@@ -41,15 +50,19 @@ function hintSummary(attempt: Attempt, grading: ScoredGrading): string | null {
   return grading.hintPenalty ? `힌트 ${hintCount}회 사용 (−${grading.hintPenalty}점)` : `힌트 ${hintCount}회 사용`
 }
 
-function ScoreHeader({ attempt, grading }: { attempt: Attempt; grading: ScoredGrading }) {
+function scoreSummary(attempt: Attempt, question: Question, grading: ScoredGrading): string {
+  if (isShortAnswer(question)) return shortAnswerVerdict(grading.totalScore)
   const fullCount = grading.requiredCoverage.filter((item) => item.status === 'full').length
-  const details = [`필수 항목 ${fullCount}/${grading.requiredCoverage.length} 충족`, hintSummary(attempt, grading), `${formatDateTime(grading.gradedAt)} 채점`]
+  return [`필수 항목 ${fullCount}/${grading.requiredCoverage.length} 충족`, hintSummary(attempt, grading)].filter(Boolean).join(' · ')
+}
+
+function ScoreHeader({ attempt, question, grading }: { attempt: Attempt; question: Question; grading: ScoredGrading }) {
   return (
     <section className="card p-7">
       <div className="flex items-end gap-8">
         <div>
           <p className={`text-5xl font-bold tracking-tight ${scoreTone(grading.totalScore)}`}>{grading.totalScore}<span className="text-xl font-medium text-ink-faint"> / 100</span></p>
-          <p className="mt-1 text-sm text-ink-muted">{details.filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 text-sm text-ink-muted">{scoreSummary(attempt, question, grading)} · {formatDateTime(grading.gradedAt)} 채점</p>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2">
           {grading.perspectiveScores.map((item) => (
@@ -98,7 +111,8 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
 }
 
 export function ResultView({ attempt, question }: { attempt: Attempt; question: Question }) {
-  const [tab, setTab] = useState<ResultTab>('weaknesses')
+  const tabs = isShortAnswer(question) ? SHORT_ANSWER_TABS : RESULT_TABS
+  const [tab, setTab] = useState<ResultTab>(tabs[0].value)
   const [isRetrying, setIsRetrying] = useState(false)
   const navigate = useNavigate()
   const showToast = useToast()
@@ -119,8 +133,8 @@ export function ResultView({ attempt, question }: { attempt: Attempt; question: 
         <summary className="cursor-pointer font-semibold">문제 다시 보기: {question.title}</summary>
         <div className="mt-4"><QuestionStatement question={question} /></div>
       </details>
-      <ScoreHeader attempt={attempt} grading={attempt.grading!} />
-      <div className="mt-6"><Tabs tabs={RESULT_TABS} active={tab} onChange={setTab} /></div>
+      <ScoreHeader attempt={attempt} question={question} grading={attempt.grading!} />
+      <div className="mt-6"><Tabs tabs={tabs} active={tab} onChange={setTab} /></div>
       <div className="mt-4"><TabContent tab={tab} attempt={attempt} question={question} /></div>
       <DiscussionSection attempt={attempt} question={question} />
       <section className="card mt-8 p-5">

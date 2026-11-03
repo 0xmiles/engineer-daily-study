@@ -1,4 +1,5 @@
 import type { Attempt } from '@shared/types'
+import { isShortAnswer } from '@shared/taxonomy'
 import { api } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useRunningJob } from '../state/jobs'
@@ -9,6 +10,7 @@ import { PageContainer } from '../components/PageHeader'
 import { QuestionStatement } from '../components/QuestionStatement'
 import { Button } from '../components/controls'
 import { InterviewAttemptNotice } from '../components/InterviewAttemptNotice'
+import { ShortAnswerSolveView } from './ShortAnswerSolveView'
 import { SolveView } from './SolveView'
 import { ResultView } from './ResultView'
 import { PostponedView } from './PostponedView'
@@ -57,6 +59,7 @@ export function AttemptPage({ attemptId }: { attemptId: string }) {
 
   // A mock interview question is answered on the interview screen, where its timer runs.
   if (attempt.status === 'draft' && attempt.origin === 'interview') return <InterviewAttemptNotice attempt={attempt} />
+  if (attempt.status === 'draft' && isShortAnswer(question)) return <ShortAnswerSolveView attempt={attempt} question={question} />
   if (attempt.status === 'draft') return <SolveView attempt={attempt} question={question} />
   if (attempt.status === 'graded') return <ResultView attempt={attempt} question={question} />
   if (attempt.status === 'postponed') return <PostponedView attempt={attempt} question={question} />
