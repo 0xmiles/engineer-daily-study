@@ -1,0 +1,43 @@
+{
+  "id": "seed-term-definition-distributed-systems",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "distributed-systems",
+  "difficulty": "junior",
+  "title": "여러 번 수행해도 결과가 같은 성질",
+  "situation": "같은 요청을 한 번 수행하든 여러 번 수행하든 시스템의 최종 상태가 같게 유지되는 성질을 무엇이라고 부르나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "재시도를 안전하게 만드는 성질"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "멱등성",
+        "explanation": "멱등성이라고 답해야 한다. idempotency 라는 원어도 인정한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "응답이 항상 같아야 한다는 오해",
+        "explanation": "멱등성의 기준은 응답 값이 아니라 시스템의 상태다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "멱등성입니다. 재시도나 중복 전달이 일어나는 분산 환경에서 요청을 안전하게 다시 처리할 수 있게 해 줍니다.",
+  "relatedStudyTopics": [
+    "멱등성 설계",
+    "전달 보장 수준"
+  ]
+}

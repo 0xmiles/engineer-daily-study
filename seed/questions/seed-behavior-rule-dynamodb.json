@@ -1,0 +1,43 @@
+{
+  "id": "seed-behavior-rule-dynamodb",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "dynamodb",
+  "difficulty": "middle",
+  "title": "글로벌 보조 인덱스의 읽기 일관성",
+  "situation": "DynamoDB 글로벌 보조 인덱스(GSI)를 조회할 때 강력한 일관성 읽기를 요청할 수 있나요? 가능 여부와 이유를 답하세요.",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "GSI 비동기 복제와 일관성"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "GSI 는 최종 일관성 읽기만 지원",
+        "explanation": "불가능하다고 답하고, GSI 가 기본 테이블에서 비동기로 복제되어 최종 일관성만 지원한다는 이유를 써야 한다. 불가능하다고만 쓰면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "LSI 와 혼동",
+        "explanation": "강력한 일관성 읽기는 기본 테이블과 LSI 에서만 가능하다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "요청할 수 없습니다. GSI 는 기본 테이블의 변경을 비동기로 반영하므로 최종 일관성 읽기만 지원합니다. 강력한 일관성이 필요하면 기본 테이블을 읽어야 합니다.",
+  "relatedStudyTopics": [
+    "DynamoDB 읽기 일관성",
+    "GSI와 LSI 차이"
+  ]
+}

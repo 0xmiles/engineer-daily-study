@@ -1,0 +1,44 @@
+{
+  "id": "seed-term-definition-dynamodb",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "dynamodb",
+  "difficulty": "junior",
+  "title": "한 키에 요청이 몰리는 현상",
+  "situation": "테이블 전체 용량에는 여유가 있는데, 특정 파티션 키 값에 요청이 몰려 해당 파티션에서만 쓰로틀링이 일어나는 현상을 무엇이라고 부르나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "파티션 키 쏠림과 쓰로틀링"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "핫 파티션",
+        "explanation": "핫 파티션 또는 핫 키라고 답해야 한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "테이블 용량 부족과 혼동",
+        "explanation": "테이블 전체 용량을 늘려도 한 키의 쏠림은 해결되지 않을 수 있다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "핫 파티션입니다. 파티션별 처리량에는 상한이 있어, 테이블 전체 용량이 남아 있어도 한 키에 요청이 몰리면 쓰로틀링이 일어납니다.",
+  "relatedStudyTopics": [
+    "DynamoDB 파티션 키 설계",
+    "적응형 용량",
+    "쓰기 샤딩"
+  ]
+}

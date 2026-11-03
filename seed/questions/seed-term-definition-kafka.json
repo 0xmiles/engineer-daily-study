@@ -1,0 +1,43 @@
+{
+  "id": "seed-term-definition-kafka",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "kafka",
+  "difficulty": "junior",
+  "title": "컨슈머 그룹의 파티션을 다시 나누는 과정",
+  "situation": "컨슈머 그룹에 컨슈머가 새로 들어오거나 빠질 때, 파티션 소유권을 그룹 구성원에게 다시 배분하는 과정을 무엇이라고 부르나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "컨슈머 그룹 파티션 재배분"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "리밸런싱",
+        "explanation": "리밸런싱 또는 리밸런스라고 답해야 한다. 재조정처럼 같은 뜻의 표현도 인정한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "복제와 혼동",
+        "explanation": "리더 선출이나 복제는 브로커 쪽 동작이고, 리밸런싱은 컨슈머 그룹의 소유권 배분이다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "리밸런싱입니다. 그룹 구성원이나 구독 파티션이 바뀌면 그룹 코디네이터가 파티션 소유권을 다시 배분합니다.",
+  "relatedStudyTopics": [
+    "Kafka 컨슈머 리밸런싱",
+    "협력적 리밸런싱"
+  ]
+}

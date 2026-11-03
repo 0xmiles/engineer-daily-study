@@ -1,0 +1,43 @@
+{
+  "id": "seed-behavior-rule-cache",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "cache",
+  "difficulty": "middle",
+  "title": "값이 바뀐 뒤 캐시를 맞추는 방법",
+  "situation": "cache-aside 에서 DB 값을 바꾼 뒤 캐시에 새 값을 쓰는 대신 일반적으로 어떤 동작을 하나요? 그렇게 하는 이유도 답하세요.",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "갱신 대신 삭제를 택하는 이유"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "캐시 삭제와 쓰기 순서 역전 방지",
+        "explanation": "캐시 키를 삭제한다고 답하고, 동시 쓰기의 순서가 뒤바뀌어 오래된 값이 남는 위험을 줄인다는 이유를 써야 한다. 삭제만 쓰면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "삭제하면 불일치가 사라진다는 오해",
+        "explanation": "삭제 방식에도 드물게 경쟁 조건이 남으므로 만료 시간을 함께 둔다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "캐시 키를 삭제합니다. 새 값을 쓰면 동시 쓰기에서 DB 와 캐시의 반영 순서가 달라져 오래된 값이 남을 수 있습니다. 삭제하면 다음 읽기가 DB 에서 다시 채웁니다.",
+  "relatedStudyTopics": [
+    "cache-aside",
+    "캐시 무효화 경쟁 조건"
+  ]
+}

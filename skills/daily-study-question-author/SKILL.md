@@ -1,11 +1,11 @@
 ---
 name: daily-study-question-author
-description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술형 문제를 Daily Study 규칙대로 생성·변형하고, 중복 여부를 판정하고, 직접 입력한 문제의 채점 기준을 작성한다. "Daily Study 문제 만들어 줘", "Kafka 시니어 시나리오 문제", "서술형 문제 생성", "이 문제 변형해 줘", "문제 중복 확인", "채점 기준 작성" 요청에 사용한다.
+description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술형 문제와 단답형 문제를 Daily Study 규칙대로 생성·변형하고, 중복 여부를 판정하고, 직접 입력한 문제의 채점 기준을 작성한다. "Daily Study 문제 만들어 줘", "Kafka 시니어 시나리오 문제", "서술형 문제 생성", "단답형 문제 생성", "이 문제 변형해 줘", "문제 중복 확인", "채점 기준 작성" 요청에 사용한다.
 ---
 
 # Daily Study 문제 작성 skill
 
-백엔드 개발자가 매일 푸는 서술형 문제를 만든다. 결과물은 `schemas/question-content.schema.json` 형식의 JSON 하나다.
+백엔드 개발자가 매일 푸는 서술형 문제와 단답형 문제를 만든다. 결과물은 `schemas/question-content.schema.json` 형식의 JSON 하나다.
 
 ## 반드시 읽을 참고 문서
 
@@ -29,6 +29,7 @@ description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술�
 
 1. `existingQuestions` 의 `keyIssues` 를 읽고, 겹치지 않는 핵심 쟁점을 고른다.
 2. `references/question-format.md` 규칙대로 문제를 쓴다. 시나리오형은 먼저 얽힐 기술 계층과 원인 구조(근본 원인, 2차 증상, 오해를 부르는 단서)를 정한 뒤 `situation` 을 쓴다.
+   단답형(`format` 이 `short-answer`)은 `references/question-format.md` 의 "단답형 규칙"을 따른다.
 3. 품질 점검표를 모두 통과하는지 확인한다. 통과하지 못하면 고쳐 쓴다.
 
 ### variant: 약점 재출제용 변형

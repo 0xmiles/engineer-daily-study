@@ -1,0 +1,43 @@
+{
+  "id": "seed-behavior-rule-api-architecture",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "api-architecture",
+  "difficulty": "middle",
+  "title": "목록을 넘기는 중에 새 글이 추가될 때",
+  "situation": "최신순 목록을 `OFFSET` 방식으로 조회합니다. 사용자가 1페이지를 본 뒤 2페이지를 요청하기 전에 새 글 5개가 추가되었습니다. 2페이지 결과에 어떤 문제가 생기나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "OFFSET 페이지네이션의 행 밀림"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "행 밀림으로 인한 중복 노출",
+        "explanation": "기존 행이 뒤로 밀려 1페이지에서 본 글이 2페이지에 다시 나온다고 써야 한다. 커서 기반 페이지네이션을 해법으로 덧붙이지 않아도 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "성능 문제만 답함",
+        "explanation": "깊은 페이지가 느려지는 것은 다른 문제이고, 이 상황에서는 결과의 정확성이 문제다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "기존 글이 5칸씩 뒤로 밀려서 1페이지 끝에서 본 글 5개가 2페이지에 다시 나옵니다. 마지막으로 본 위치를 기준으로 읽는 커서 기반 페이지네이션을 쓰면 막을 수 있습니다.",
+  "relatedStudyTopics": [
+    "커서 기반 페이지네이션",
+    "keyset pagination"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "seed-term-definition-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "mysql-postgresql",
+  "difficulty": "junior",
+  "title": "읽기가 쓰기를 막지 않게 하는 방식",
+  "situation": "행의 여러 버전을 유지해서, 읽는 트랜잭션이 쓰는 트랜잭션을 기다리지 않고 자신의 스냅샷에 맞는 버전을 읽게 하는 동시성 제어 방식의 이름은 무엇인가요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "행 버전 기반 동시성 제어"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "MVCC",
+        "explanation": "MVCC 또는 다중 버전 동시성 제어라고 답해야 한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "쓰기끼리도 충돌하지 않는다는 오해",
+        "explanation": "같은 행에 대한 쓰기끼리는 여전히 락으로 충돌한다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "MVCC(다중 버전 동시성 제어)입니다. 행의 이전 버전을 남겨 두어 읽기는 자신의 스냅샷에 맞는 버전을 읽습니다.",
+  "relatedStudyTopics": [
+    "MVCC",
+    "InnoDB undo log",
+    "PostgreSQL 스냅샷"
+  ]
+}

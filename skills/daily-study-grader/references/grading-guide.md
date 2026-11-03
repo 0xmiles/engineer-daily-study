@@ -33,6 +33,17 @@
 
 힌트 감점은 앱이 채점 뒤에 따로 계산한다. 채점할 때는 힌트를 받았는지 고려하지 않고 답안 자체만 판정한다.
 
+## 단답형 채점
+
+`question.format` 이 `short-answer` 인 답안에 적용한다. 총점은 앱이 판정만으로 계산한다(`full` 100점, `partial` 50점, `missing` 0점).
+
+- 답안이 짧은 것은 감점 사유가 아니다. 용어 하나로 답을 요구한 문제에서 용어만 쓴 답은 `full` 이다.
+- `rubric.required[0].explanation` 이 정답, 인정하는 동의어, 부분 정답의 기준을 정한다. 표현이 달라도 의미가 같으면 인정한다.
+- `bonusMatched`, `deductionsApplied`, `perspectiveScores` 는 빈 배열로 둔다.
+- `overallComment` 는 2~3문장으로 판정 이유와 핵심 해설을 쓴다.
+- `strengths` 와 `weaknesses` 는 해당 내용이 있을 때만 각 1개 이하로 쓰고, 없으면 빈 배열로 둔다.
+- `studyRecommendations` 는 1~2개 쓴다. 아래 개수 규칙은 적용하지 않는다.
+
 ## 피드백 작성 규칙
 
 ### 잘한 점 (`strengths`, 1~4개)

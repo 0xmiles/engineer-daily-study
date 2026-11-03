@@ -1,0 +1,44 @@
+{
+  "id": "seed-applied-judgment-dynamodb",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "dynamodb",
+  "difficulty": "senior",
+  "title": "동시 요청에도 음수가 되면 안 되는 재고",
+  "situation": "재고 수량을 `UpdateItem` 으로 차감합니다. 동시 요청이 많아도 재고가 음수가 되면 안 되고, 별도의 분산 락은 쓰고 싶지 않습니다. DynamoDB 의 어떤 기능을 어떻게 쓰면 되나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "조건부 쓰기를 이용한 원자적 차감"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "조건부 쓰기로 재고 조건 검사",
+        "explanation": "`ConditionExpression` 같은 조건부 쓰기로 재고가 차감 수량 이상일 때만 갱신하고, 조건이 실패하면 품절로 처리한다고 써야 한다. 기능 이름만 쓰고 조건 내용이 없으면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "읽은 뒤 애플리케이션에서 비교",
+        "explanation": "읽기와 쓰기 사이에 다른 요청이 끼어들 수 있다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "조건부 쓰기를 씁니다. `ConditionExpression` 에 `stock >= :quantity` 를 주고 차감하면 DynamoDB 가 항목 단위로 원자적으로 검사하고, 조건이 맞지 않으면 `ConditionalCheckFailedException` 으로 거부합니다.",
+  "relatedStudyTopics": [
+    "DynamoDB 조건부 쓰기",
+    "원자적 카운터",
+    "TransactWriteItems"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "seed-applied-judgment-cache",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "cache",
+  "difficulty": "senior",
+  "title": "축출 정책이 있는데 쓰기가 실패하는 Redis",
+  "situation": "Redis 의 `maxmemory-policy` 가 `volatile-lru` 입니다. 애플리케이션은 모든 키를 만료 시간 없이 저장해 왔고, 메모리가 `maxmemory` 에 닿았습니다. 새 쓰기 요청은 어떻게 되나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "volatile 정책의 축출 대상"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "축출 대상이 없어 쓰기 오류 발생",
+        "explanation": "만료 시간이 있는 키만 축출 대상인데 그런 키가 없으므로 축출하지 못하고, 쓰기가 OOM 오류로 실패한다고 써야 한다. 실패만 쓰고 이유가 없으면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "오래된 키부터 지워진다는 오해",
+        "explanation": "그 동작은 `allkeys-lru` 일 때의 동작이다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "쓰기가 OOM 오류로 실패합니다. `volatile-lru` 는 만료 시간이 있는 키만 축출하는데 그런 키가 없어, `noeviction` 처럼 동작합니다. 읽기는 계속 처리됩니다.",
+  "relatedStudyTopics": [
+    "Redis 축출 정책",
+    "Redis 메모리 관리"
+  ]
+}

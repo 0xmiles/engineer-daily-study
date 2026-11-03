@@ -141,3 +141,32 @@
   "relatedStudyTopics": ["InnoDB undo log와 purge", "PostgreSQL VACUUM과 autovacuum 튜닝", "PostgreSQL HOT update", "트랜잭션 ID wraparound"]
 }
 ```
+
+## 단답형 샘플
+
+```json
+{
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "kafka",
+  "difficulty": "middle",
+  "title": "파티션보다 컨슈머가 많은 그룹",
+  "situation": "파티션이 4개인 토픽을 같은 컨슈머 그룹의 컨슈머 6개가 구독합니다. 파티션을 배정받지 못하는 컨슈머는 몇 개이고, 그 컨슈머들은 어떤 상태인가요?",
+  "requirements": [],
+  "recommendedLength": { "min": 5, "max": 150 },
+  "keyIssues": ["그룹 내 파티션당 컨슈머 하나"],
+  "rubric": {
+    "required": [
+      { "point": "초과한 컨슈머 2개는 유휴 상태", "explanation": "2개이고, 파티션을 배정받지 못해 메시지를 소비하지 않는 유휴 상태라고 써야 한다. 개수나 상태 중 하나만 맞으면 부분 정답이다." }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      { "point": "컨슈머를 늘리면 무조건 처리량이 는다는 오해", "explanation": "같은 그룹의 병렬도 상한은 파티션 수다." }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "2개입니다. 그룹 안에서 파티션 하나는 컨슈머 하나에만 배정되므로, 남은 2개는 메시지를 소비하지 않고 대기하다가 다른 컨슈머가 빠지면 배정받습니다.",
+  "relatedStudyTopics": ["Kafka 컨슈머 그룹", "파티션과 병렬도"]
+}
+```

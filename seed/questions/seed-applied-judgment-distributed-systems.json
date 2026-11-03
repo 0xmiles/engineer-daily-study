@@ -1,0 +1,43 @@
+{
+  "id": "seed-applied-judgment-distributed-systems",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "distributed-systems",
+  "difficulty": "senior",
+  "title": "결제에 실패한 주문의 앞선 단계",
+  "situation": "주문 생성, 재고 차감, 결제가 서비스별 DB 에 나뉘어 있습니다. 앞의 두 단계는 각자 커밋되었는데 결제가 최종 실패했습니다. 데이터베이스 롤백을 쓸 수 없는 이 상황에서 앞선 단계를 되돌리는 방법의 이름과 동작을 답하세요.",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "Saga 보상 트랜잭션"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "Saga 의 보상 트랜잭션",
+        "explanation": "보상 트랜잭션이라고 답하고, 재고를 복구하고 주문을 취소하는 별도 작업을 역순으로 실행한다는 동작을 써야 한다. 이름만 쓰면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "2단계 커밋을 지금 적용",
+        "explanation": "이미 커밋된 단계에는 적용할 수 없다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "보상 트랜잭션입니다. Saga 패턴에서 이미 커밋된 단계를 되돌리는 별도 작업을 실행합니다. 이 경우 재고를 복구하고 주문을 취소합니다. 보상 작업도 재시도될 수 있으므로 멱등하게 만듭니다.",
+  "relatedStudyTopics": [
+    "Saga 패턴",
+    "보상 트랜잭션 멱등성"
+  ]
+}

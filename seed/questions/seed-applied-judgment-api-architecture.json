@@ -1,0 +1,44 @@
+{
+  "id": "seed-applied-judgment-api-architecture",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "api-architecture",
+  "difficulty": "senior",
+  "title": "타입을 바꿔야 하는 공개 API 필드",
+  "situation": "구버전 앱이 계속 쓰는 공개 API 에서 숫자형 필드 `amount` 를 통화 정보가 있는 객체로 바꿔야 합니다. 구버전 앱을 깨지 않으면서 전환하려면 어떻게 하나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "하위 호환을 지키는 필드 전환"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "새 필드 병행 후 단계적 폐기",
+        "explanation": "`amount` 는 그대로 두고 새 필드를 추가해 함께 제공한 뒤, 구버전 사용량을 확인하고 이전 필드를 제거한다고 써야 한다. 새 API 버전으로 병행 제공하는 답도 인정한다. 사용량 확인 후 제거 단계가 없으면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "기존 필드의 타입을 바로 변경",
+        "explanation": "구버전 앱의 응답 파싱이 실패한다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "`amount` 는 유지하고 새 필드(예: `money`)를 추가해 둘 다 내려 줍니다. 클라이언트가 새 필드로 옮겨 간 것을 지표로 확인한 뒤 이전 필드를 폐기합니다. 새 API 버전을 병행하는 방법도 같은 원칙입니다.",
+  "relatedStudyTopics": [
+    "API 하위 호환성",
+    "expand-contract 패턴",
+    "API 폐기 정책"
+  ]
+}

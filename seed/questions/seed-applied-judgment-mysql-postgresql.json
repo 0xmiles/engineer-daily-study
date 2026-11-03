@@ -1,0 +1,44 @@
+{
+  "id": "seed-applied-judgment-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "mysql-postgresql",
+  "difficulty": "senior",
+  "title": "VACUUM 이 돌아도 커지는 테이블",
+  "situation": "PostgreSQL 에서 autovacuum 은 정상적으로 도는데 자주 수정되는 테이블의 죽은 튜플이 줄지 않고 계속 늘어납니다. 확인해 보니 6시간째 열려 있는 트랜잭션이 하나 있습니다. 둘은 어떤 관계인가요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "장기 트랜잭션과 VACUUM 회수 경계"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "오래된 트랜잭션이 죽은 튜플 회수를 막음",
+        "explanation": "오래 열린 트랜잭션의 스냅샷이 아직 볼 수 있는 행 버전은 VACUUM 이 지울 수 없다는 점을 써야 한다. xmin 경계로 설명해도 인정한다. 트랜잭션을 끝내야 한다고만 쓰면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "VACUUM FULL 로 해결된다는 답",
+        "explanation": "장기 트랜잭션이 남아 있으면 VACUUM FULL 도 해당 행 버전을 지울 수 없다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "오래 열린 트랜잭션이 볼 수 있는 행 버전은 VACUUM 이 회수할 수 없습니다. 그 트랜잭션의 시작 이후에 죽은 튜플이 계속 쌓이므로, 트랜잭션을 끝내야 VACUUM 이 회수를 이어 갈 수 있습니다.",
+  "relatedStudyTopics": [
+    "PostgreSQL VACUUM",
+    "xmin horizon",
+    "idle in transaction"
+  ]
+}

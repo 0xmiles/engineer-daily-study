@@ -1,0 +1,43 @@
+{
+  "id": "seed-term-definition-cache",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "cache",
+  "difficulty": "junior",
+  "title": "인기 키가 만료된 순간의 요청 폭주",
+  "situation": "요청이 많은 캐시 키가 만료된 순간, 동시에 들어온 요청이 모두 캐시 미스를 겪고 DB 로 몰리는 현상을 무엇이라고 부르나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "인기 키 만료 시 DB 부하 집중"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "캐시 스탬피드",
+        "explanation": "캐시 스탬피드라고 답해야 한다. thundering herd, dog-pile 같은 동의어도 인정한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "캐시 관통과 혼동",
+        "explanation": "캐시 관통은 존재하지 않는 키를 반복 조회해 DB 로 가는 현상이다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "캐시 스탬피드입니다. 키 하나를 다시 채우는 동안 같은 요청이 DB 로 몰립니다. 재적재 잠금, 만료 전 갱신, 만료 시간 분산으로 줄입니다.",
+  "relatedStudyTopics": [
+    "캐시 스탬피드 방어",
+    "요청 합치기"
+  ]
+}

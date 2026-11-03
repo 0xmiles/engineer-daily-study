@@ -1,0 +1,43 @@
+{
+  "id": "seed-behavior-rule-mysql-postgresql",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "mysql-postgresql",
+  "difficulty": "middle",
+  "title": "복합 인덱스의 뒤쪽 열만 쓰는 조회",
+  "situation": "복합 인덱스 `(a, b)` 가 있습니다. `WHERE b = 10` 처럼 `a` 조건 없이 조회할 때, 이 인덱스로 일반적인 범위 탐색을 하기 어려운 이유는 무엇인가요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "복합 인덱스 왼쪽 접두 규칙"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "선두 열 기준 정렬과 왼쪽 접두 규칙",
+        "explanation": "인덱스가 `a` 로 먼저 정렬되어 `b` 만으로는 시작 위치를 정할 수 없다는 점이나 왼쪽 접두 규칙을 써야 한다. MySQL 의 skip scan 같은 예외를 덧붙여도 인정한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "열 순서는 상관없다는 오해",
+        "explanation": "옵티마이저가 조건 순서를 바꿀 수는 있어도 인덱스의 정렬 순서는 바꿀 수 없다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "인덱스는 `a` 로 먼저 정렬되고 같은 `a` 안에서만 `b` 로 정렬됩니다. `b` 는 전체적으로 정렬되어 있지 않아 탐색 시작 위치를 정할 수 없습니다. 이것이 왼쪽 접두 규칙입니다.",
+  "relatedStudyTopics": [
+    "복합 인덱스 설계",
+    "MySQL skip scan"
+  ]
+}

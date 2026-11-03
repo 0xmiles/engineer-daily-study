@@ -1,0 +1,44 @@
+{
+  "id": "seed-applied-judgment-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "kotlin-spring",
+  "difficulty": "senior",
+  "title": "새 트랜잭션을 여는 호출이 멈춘 서비스",
+  "situation": "커넥션 풀 크기가 10입니다. 트랜잭션 안에서 `REQUIRES_NEW` 메서드를 호출하는 요청 10개가 동시에 들어오자 모든 요청이 멈췄고, 커넥션 획득 타임아웃이 발생합니다. 요청들이 멈춘 원인은 무엇인가요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "REQUIRES_NEW 커넥션 추가 점유",
+    "커넥션 풀 교착"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "커넥션을 쥔 채 추가 커넥션을 기다리는 교착 상태",
+        "explanation": "요청마다 바깥 트랜잭션의 커넥션을 쥔 상태에서 `REQUIRES_NEW` 용 커넥션을 하나 더 기다리고, 풀이 이미 소진되어 서로 반납을 기다린다는 점을 써야 한다. 커넥션 풀 고갈만 쓰고 커넥션을 쥔 채 기다린다는 구조가 없으면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "느린 쿼리를 원인으로 지목",
+        "explanation": "쿼리 속도와 무관하게 커넥션 대기의 순환 때문에 멈춘다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "요청마다 바깥 트랜잭션의 커넥션을 쥔 채 `REQUIRES_NEW` 용 커넥션을 하나 더 기다립니다. 커넥션 10개가 모두 바깥 트랜잭션에 묶여 있어 아무도 반납하지 못하는 교착 상태입니다.",
+  "relatedStudyTopics": [
+    "트랜잭션 전파 속성",
+    "HikariCP 풀 크기 산정"
+  ]
+}

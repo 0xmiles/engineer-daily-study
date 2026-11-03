@@ -1,0 +1,43 @@
+{
+  "id": "seed-applied-judgment-kafka",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "applied-judgment",
+  "topic": "kafka",
+  "difficulty": "senior",
+  "title": "브로커 두 대가 내려간 토픽의 쓰기",
+  "situation": "복제 계수 3, `min.insync.replicas=2` 인 토픽에 프로듀서가 `acks=all` 로 씁니다. 브로커 2대가 내려가 ISR 에 리더 1개만 남았습니다. 이때 프로듀서의 쓰기는 어떻게 되나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "min.insync.replicas 와 acks=all 의 쓰기 거부"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "ISR 부족으로 쓰기 거부",
+        "explanation": "쓰기가 실패한다고 답하고, ISR 수가 `min.insync.replicas` 보다 작기 때문이라는 이유를 써야 한다. `NotEnoughReplicas` 오류를 언급하면 이유로 인정한다. 실패한다고만 쓰면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "리더만 살아 있으면 쓰기가 성공한다는 오해",
+        "explanation": "`acks=1` 일 때의 동작이다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "쓰기가 `NotEnoughReplicas` 오류로 거부됩니다. ISR 이 1개라서 `min.insync.replicas=2` 를 만족하지 못하기 때문입니다. 이 설정은 가용성을 낮추는 대신 메시지 유실을 막습니다.",
+  "relatedStudyTopics": [
+    "Kafka ISR",
+    "acks와 내구성"
+  ]
+}

@@ -18,6 +18,9 @@ const SCENARIO_COMPLEXITY = {
   senior: { minRequiredItems: 5, length: { min: 1000, max: 1800 } },
 }
 const MIN_SCENARIO_KEY_ISSUES = 3
+// Mirrors SHORT_ANSWER_LENGTH in src/shared/rules.ts.
+const SHORT_ANSWER_LENGTH = { min: 5, max: 150 }
+const MIN_SHORT_ANSWER_MODEL_LENGTH = 30
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
@@ -58,6 +61,18 @@ function findContentQualityErrors(question) {
   if (question.keyIssues.length < 2) errors.push('at least 2 keyIssues')
   if (question.modelAnswer.length < 300) errors.push('modelAnswer is too short')
   if (question.modelAnswer.includes('생략')) errors.push('modelAnswer must be complete')
+  return errors
+}
+
+function findShortAnswerErrors(question) {
+  const errors = []
+  if (question.requirements.length > 0) errors.push('short answer must have no requirements')
+  if (question.rubric.required.length !== 1) errors.push('short answer needs exactly 1 required rubric item')
+  if (question.rubric.bonus.length > 0) errors.push('short answer must have no bonus rubric items')
+  if (question.keyIssues.length < 1) errors.push('at least 1 keyIssue')
+  if (question.modelAnswer.length < MIN_SHORT_ANSWER_MODEL_LENGTH) errors.push('modelAnswer is too short')
+  const { min, max } = question.recommendedLength
+  if (min !== SHORT_ANSWER_LENGTH.min || max !== SHORT_ANSWER_LENGTH.max) errors.push(`short answer recommendedLength must be ${SHORT_ANSWER_LENGTH.min}~${SHORT_ANSWER_LENGTH.max}`)
   return errors
 }
 
@@ -114,7 +129,7 @@ let failureCount = 0
 for (const fileName of fileNames) {
   const question = readJson(join(seedDirectory, fileName))
   const schemaErrors = validateAgainstSchema(contentSchema, stripMetadata(question))
-  const errors = [...schemaErrors, ...findMetadataErrors(question, fileName), ...findTaxonomyErrors(question), ...findContentQualityErrors(question), ...findScenarioComplexityErrors(question)]
+  const errors = [...schemaErrors, ...findMetadataErrors(question, fileName), ...findTaxonomyErrors(question), ...(question.format === 'short-answer' ? findShortAnswerErrors(question) : findContentQualityErrors(question)), ...findScenarioComplexityErrors(question)]
   if (errors.length > 0) {
     failureCount++
     console.log(`FAIL ${fileName}\n  - ${errors.join('\n  - ')}`)

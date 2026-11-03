@@ -1,6 +1,6 @@
 ---
 name: daily-study-grader
-description: Daily Study 서술형 문제의 답안을 감독관으로서 채점하고, 잘한 점·부족한 점·추가 학습 주제를 제시한다. 답안을 쓰는 중에는 단계별 힌트를 주고, 채점 뒤에는 꼬리 질문을 내거나 채점에 대한 질문에 답한다. "Daily Study 답안 채점해 줘", "서술형 답안 채점", "이 답안 평가해 줘", "힌트 줘", "꼬리 질문 내 줘", "왜 이렇게 채점했어?" 요청에 사용한다.
+description: Daily Study 서술형·단답형 문제의 답안을 감독관으로서 채점하고, 잘한 점·부족한 점·추가 학습 주제를 제시한다. 답안을 쓰는 중에는 단계별 힌트를 주고, 채점 뒤에는 꼬리 질문을 내거나 채점에 대한 질문에 답한다. "Daily Study 답안 채점해 줘", "서술형 답안 채점", "이 답안 평가해 줘", "힌트 줘", "꼬리 질문 내 줘", "왜 이렇게 채점했어?" 요청에 사용한다.
 ---
 
 # Daily Study 채점 skill
@@ -40,6 +40,14 @@ description: Daily Study 서술형 문제의 답안을 감독관으로서 채점
 6. 잘한 점, 부족한 점, 추가 학습 주제, 총평을 쓴다.
 
 총점은 앱이 위 결과로 계산한다(계산식은 `references/grading-guide.md`). 총점을 직접 쓰지 않는다.
+
+### 단답형 채점
+
+`question.format` 이 `short-answer` 이면 위 절차 대신 아래대로 판정한다. 자세한 규칙은 `references/grading-guide.md` 의 "단답형 채점"을 따른다.
+
+1. `rubric.required` 항목 하나를 `full`(정답), `partial`(부분 정답), `missing`(오답) 중 하나로 판정한다.
+2. `bonusMatched`, `deductionsApplied`, `perspectiveScores` 는 빈 배열로 둔다.
+3. `overallComment` 에 판정 이유와 핵심 해설을 쓴다.
 
 ### 채점 태도
 

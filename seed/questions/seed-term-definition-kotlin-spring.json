@@ -1,0 +1,43 @@
+{
+  "id": "seed-term-definition-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "term-definition",
+  "topic": "kotlin-spring",
+  "difficulty": "junior",
+  "title": "부가 기능을 끼워 넣는 객체의 이름",
+  "situation": "Spring 은 `@Transactional` 이 붙은 Bean 을 그대로 주입하지 않고, 대상 객체를 감싸 메서드 호출 앞뒤에 트랜잭션 처리를 끼워 넣는 객체를 주입합니다. 이 객체를 무엇이라고 부르나요?",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "Spring AOP 프록시"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "프록시",
+        "explanation": "프록시 또는 AOP 프록시라고 답해야 한다. 대리 객체처럼 같은 뜻의 표현도 인정한다. 구현 방식인 CGLIB 프록시나 JDK 동적 프록시로 답해도 인정한다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "어드바이스와 혼동",
+        "explanation": "어드바이스는 끼워 넣는 부가 동작 자체이고, 호출을 가로채는 객체는 프록시다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "프록시(AOP 프록시)입니다. Spring 은 대상 Bean 을 감싼 프록시를 주입하고, 프록시가 메서드 호출 앞뒤에서 트랜잭션을 시작하고 커밋하거나 롤백합니다.",
+  "relatedStudyTopics": [
+    "Spring AOP 프록시",
+    "CGLIB와 JDK 동적 프록시"
+  ]
+}

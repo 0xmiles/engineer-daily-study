@@ -1,0 +1,43 @@
+{
+  "id": "seed-behavior-rule-kotlin-spring",
+  "source": "seed",
+  "reviewStatus": "unreviewed",
+  "createdAt": "2026-11-03T00:00:00.000Z",
+  "variantOf": null,
+  "format": "short-answer",
+  "category": "behavior-rule",
+  "topic": "kotlin-spring",
+  "difficulty": "middle",
+  "title": "같은 클래스 안에서 호출한 메서드의 트랜잭션",
+  "situation": "`@Transactional` 이 없는 `outer()` 가 같은 클래스의 `@Transactional` 메서드 `inner()` 를 호출합니다. 외부에서는 `outer()` 를 호출합니다. `inner()` 에 트랜잭션이 적용되나요? 이유도 함께 답하세요.",
+  "requirements": [],
+  "recommendedLength": {
+    "min": 5,
+    "max": 150
+  },
+  "keyIssues": [
+    "프록시를 거치지 않는 자기 호출"
+  ],
+  "rubric": {
+    "required": [
+      {
+        "point": "자기 호출에는 트랜잭션이 적용되지 않음",
+        "explanation": "적용되지 않는다고 답하고, 내부 호출이 프록시를 거치지 않고 대상 객체에서 바로 실행된다는 이유를 써야 한다. 이유가 없으면 부분 정답이다."
+      }
+    ],
+    "bonus": [],
+    "deductions": [],
+    "commonMistakes": [
+      {
+        "point": "클래스에 트랜잭션이 하나라도 있으면 적용된다는 오해",
+        "explanation": "적용 여부는 호출이 프록시를 거치는지로 정해진다."
+      }
+    ]
+  },
+  "perspectives": [],
+  "modelAnswer": "적용되지 않습니다. `outer()` 안의 호출은 `this` 를 통한 호출이라 프록시를 거치지 않으므로 트랜잭션 처리가 끼어들 수 없습니다.",
+  "relatedStudyTopics": [
+    "Spring 트랜잭션 자기 호출",
+    "AspectJ 위빙"
+  ]
+}
