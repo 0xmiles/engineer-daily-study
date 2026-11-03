@@ -17,7 +17,7 @@ import { StreakCard } from '../components/StreakCard'
 
 const PREPARE_FAILURE_TITLE = '문제 준비를 시작하지 못했습니다'
 
-const KIND_LABELS: Record<DailyItemKind, string> = { scenario: '오늘의 시나리오', concept: '오늘의 개념', weakness: '약점 복습', retry: '미뤄 둔 문제 다시 풀기' }
+const KIND_LABELS: Record<DailyItemKind, string> = { scenario: '오늘의 시나리오', concept: '오늘의 개념', 'short-answer': '오늘의 단답형', weakness: '약점 복습', retry: '미뤄 둔 문제 다시 풀기' }
 
 function attemptStatus(attempt: Attempt | null): { label: string; className: string; action: string } {
   if (!attempt) return { label: '미풀이', className: '', action: '풀기 시작' }

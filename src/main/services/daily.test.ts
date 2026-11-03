@@ -12,7 +12,7 @@ vi.mock('../llm/skillRunner', async () => {
 
 /**
  * Fake author whose n-th question (1-based) fails when listed in failingCalls.
- * With two daily items, calls 1 and 2 fill today and calls 3 and 4 prepare tomorrow.
+ * With five daily items, calls 1 to 5 fill today and calls 6 to 10 prepare tomorrow.
  */
 function authorFailingOn(failingCalls: number[], beforeCall: (call: number) => void = () => {}) {
   let call = 0
@@ -53,7 +53,7 @@ describe('prepareDaily', () => {
   })
 
   it('succeeds when only preparing tomorrow fails', async () => {
-    authorFailingOn([3])
+    authorFailingOn([6])
     const context = createTestAppContext()
 
     const job = await runPrepareDaily(context)
@@ -65,7 +65,7 @@ describe('prepareDaily', () => {
   it('generates an item retried while the job is still running', async () => {
     const context = createTestAppContext()
     authorFailingOn([1], (call) => {
-      if (call === 3) retryDailyItem(context, todayKey(), 0)
+      if (call === 6) retryDailyItem(context, todayKey(), 0)
     })
 
     const job = await runPrepareDaily(context)

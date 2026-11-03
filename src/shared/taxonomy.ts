@@ -40,6 +40,10 @@ export const SOURCE_LABELS: Record<QuestionSource, string> = {
   manual: '직접 입력',
 }
 
+export function isShortAnswer(question: { format: QuestionFormat }): boolean {
+  return question.format === 'short-answer'
+}
+
 export function categoriesOf(format: QuestionFormat): CategoryDefinition[] {
   return CATEGORIES.filter((category) => category.format === format)
 }

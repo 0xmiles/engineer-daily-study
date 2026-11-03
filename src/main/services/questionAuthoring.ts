@@ -1,6 +1,7 @@
 import type { Question, QuestionContent, QuestionSource, QuestionSpec } from '@shared/types'
 import type { ManualQuestionInput } from '@shared/api'
-import { perspectivesOf } from '@shared/taxonomy'
+import { SHORT_ANSWER_LENGTH } from '@shared/rules'
+import { isShortAnswer, perspectivesOf } from '@shared/taxonomy'
 import { findSimilarQuestions, hasSameTitle } from '../domain/similarity'
 import { selectAuthoringGuidelines } from '../domain/feedbackSelection'
 import { completeGenerationSpec } from '../domain/selection'
@@ -53,7 +54,13 @@ function runQuestionAuthor<T>(context: AppContext, job: JobContext, schema: 'que
  */
 function normalizeContent(content: QuestionContent, spec: ConcreteSpec, allowedModelTopics: string[]): QuestionContent {
   const topic = allowedModelTopics.includes(content.topic) ? content.topic : spec.topic
-  return { ...content, format: spec.format, category: spec.category, difficulty: spec.difficulty, topic, perspectives: perspectivesOf(spec.category) }
+  const normalized = { ...content, format: spec.format, category: spec.category, difficulty: spec.difficulty, topic, perspectives: perspectivesOf(spec.category) }
+  return isShortAnswer(normalized) ? withShortAnswerShape(normalized) : normalized
+}
+
+/** The solve screen and the score formula rely on this shape, so it does not depend on what the model returned. */
+function withShortAnswerShape(content: QuestionContent): QuestionContent {
+  return { ...content, requirements: [], recommendedLength: SHORT_ANSWER_LENGTH, rubric: { ...content.rubric, bonus: [] } }
 }
 
 async function findDuplicateId(context: AppContext, job: JobContext, candidate: QuestionContent, questions: Question[]): Promise<string | null> {

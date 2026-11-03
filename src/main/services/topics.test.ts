@@ -55,6 +55,6 @@ describe('custom topics', () => {
 
     const dailySet = ensureDailySet(context, todayKey())
 
-    expect(dailySet.items.map((item) => item.spec.topic)).toEqual([redis.value, redis.value])
+    expect(dailySet.items.map((item) => item.spec.topic)).toEqual(Array(5).fill(redis.value))
   })
 })

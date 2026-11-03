@@ -33,6 +33,23 @@ describe('generateQuestion', () => {
     expect(context.repositories().questions.readAll().map((question) => question.title).sort()).toEqual(['Other title', 'Same title'])
   })
 
+  it('stores a short answer question in the fixed shape whatever the model returned', async () => {
+    const content = questionContentFor({ format: 'short-answer', category: 'term-definition', topic: 'kafka', difficulty: 'middle' }, 'Short answer')
+    runSkill.mockReset().mockResolvedValue({
+      ...content,
+      requirements: ['extra requirement'],
+      recommendedLength: { min: 300, max: 600 },
+      rubric: { ...content.rubric, bonus: [{ point: 'bonus', explanation: '' }] },
+      perspectives: ['정확성'],
+    })
+    const context = createTestAppContext()
+
+    const question = await generateQuestion(context, createTestJob(), { spec: { format: 'short-answer', category: 'term-definition', topic: 'kafka', difficulty: 'middle' } })
+
+    expect(question).toMatchObject({ requirements: [], recommendedLength: { min: 5, max: 150 }, perspectives: [] })
+    expect(question.rubric.bonus).toEqual([])
+  })
+
   it('gives concurrent generations without a topic different topics', async () => {
     authorWithTitles(['First', 'Second'])
     const context = createTestAppContext()

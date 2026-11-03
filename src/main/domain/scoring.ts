@@ -1,5 +1,6 @@
 import type { GradingResult, QuestionContent } from '@shared/types'
 import { HINT_PENALTY } from '@shared/rules'
+import { isShortAnswer } from '@shared/taxonomy'
 
 // Weights mirror skills/daily-study-grader/references/grading-guide.md; change both together.
 const REQUIRED_WEIGHT = 60
@@ -11,10 +12,10 @@ const MAX_PERSPECTIVE_SCORE = 10
 
 const COVERAGE_CREDIT = { full: 1, partial: 0.5, missing: 0 } as const
 
-function requiredScore(result: GradingResult): number {
+function coverageRatio(result: GradingResult): number {
   if (result.requiredCoverage.length === 0) return 0
   const credit = result.requiredCoverage.reduce((sum, item) => sum + COVERAGE_CREDIT[item.status], 0)
-  return (credit / result.requiredCoverage.length) * REQUIRED_WEIGHT
+  return credit / result.requiredCoverage.length
 }
 
 function perspectiveScore(result: GradingResult): number {
@@ -35,7 +36,9 @@ function deduction(result: GradingResult): number {
 }
 
 export function computeTotalScore(question: QuestionContent, result: GradingResult): number {
-  const total = requiredScore(result) + perspectiveScore(result) + bonusScore(question, result) - deduction(result)
+  // A short answer has no perspectives or bonus items, so the verdict alone decides the score.
+  if (isShortAnswer(question)) return Math.round(coverageRatio(result) * 100)
+  const total = coverageRatio(result) * REQUIRED_WEIGHT + perspectiveScore(result) + bonusScore(question, result) - deduction(result)
   return Math.round(Math.min(100, Math.max(0, total)))
 }
 

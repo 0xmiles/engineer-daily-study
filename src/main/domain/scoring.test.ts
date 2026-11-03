@@ -18,6 +18,21 @@ function grading(overrides: Partial<GradingResult>): GradingResult {
   }
 }
 
+describe('computeTotalScore for a short answer', () => {
+  const shortAnswer = { ...question, format: 'short-answer' } as QuestionContent
+  const verdict = (status: 'full' | 'partial' | 'missing') => grading({ requiredCoverage: [{ point: 'a', status, comment: '' }], bonusMatched: [], perspectiveScores: [] })
+
+  it('scores 100, 50 and 0 by verdict', () => {
+    expect(computeTotalScore(shortAnswer, verdict('full'))).toBe(100)
+    expect(computeTotalScore(shortAnswer, verdict('partial'))).toBe(50)
+    expect(computeTotalScore(shortAnswer, verdict('missing'))).toBe(0)
+  })
+
+  it('ignores deductions the grader reported', () => {
+    expect(computeTotalScore(shortAnswer, { ...verdict('full'), deductionsApplied: ['d'] })).toBe(100)
+  })
+})
+
 describe('computeTotalScore', () => {
   it('gives 100 for a perfect answer', () => {
     expect(computeTotalScore(question, grading({}))).toBe(100)

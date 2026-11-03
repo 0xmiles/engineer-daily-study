@@ -52,19 +52,18 @@ describe('planDailySet', () => {
       question('concept-other-topic', 'concept', 'why', 'cache'),
     ]
     const plan = planDailySet(context(questions), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
-    expect(plan.items.map((item) => item.questionId)).toEqual(['scenario', 'concept-other-topic'])
+    expect(plan.items.slice(0, 2).map((item) => item.questionId)).toEqual(['scenario', 'concept-other-topic'])
   })
 
   it('repeats the only enabled topic instead of picking a disabled one', () => {
     const questions = [question('scenario', 'scenario', 'incident-diagnosis', 'custom-redis'), question('concept', 'concept', 'why', 'custom-redis')]
     const plan = planDailySet(context(questions, [], [], ['custom-redis']), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
-    expect(plan.items.map((item) => item.questionId)).toEqual(['scenario', 'concept'])
+    expect(plan.items.slice(0, 2).map((item) => item.questionId)).toEqual(['scenario', 'concept'])
   })
 
   it('adds a due postponed question on top of the usual items', () => {
     const postponedQuestion = question('postponed', 'scenario', 'code-review', 'kafka', { servedAt: '2026-10-28T00:00:00Z' })
     const plan = planDailySet(context([postponedQuestion], [postponedAttempt('a-old', 'postponed', MONDAY)]), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
-    expect(plan.items).toHaveLength(3)
     expect(plan.items[2]).toMatchObject({ kind: 'retry', questionId: 'postponed', retryOfAttemptId: 'a-old' })
   })
 
@@ -73,6 +72,47 @@ describe('planDailySet', () => {
     expect(plan.items[0]).toMatchObject({ questionId: null, spec: { format: 'scenario', category: 'incident-diagnosis', difficulty: 'senior' } })
     expect(plan.items[0].spec.topic).toBeDefined()
     expect(plan.items[1].spec.topic).not.toBe(plan.items[0].spec.topic)
+  })
+})
+
+describe('planDailySet short answer items', () => {
+  const shortAnswerItems = (plan: ReturnType<typeof planDailySet>) => plan.items.filter((item) => item.kind === 'short-answer')
+
+  it('closes the set with three short answer questions on different topics', () => {
+    const questions = [
+      question('short-kafka', 'short-answer', 'term-definition', 'kafka'),
+      question('short-kafka-2', 'short-answer', 'behavior-rule', 'kafka'),
+      question('short-cache', 'short-answer', 'term-definition', 'cache'),
+      question('short-dynamodb', 'short-answer', 'term-definition', 'dynamodb'),
+    ]
+    const plan = planDailySet(context(questions), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
+    expect(plan.items.slice(-3).every((item) => item.kind === 'short-answer')).toBe(true)
+    expect(new Set(shortAnswerItems(plan).map((item) => item.spec.topic)).size).toBe(3)
+    expect(new Set(shortAnswerItems(plan).map((item) => item.questionId)).size).toBe(3)
+  })
+
+  it('does not pick the same question twice when topics run out', () => {
+    const questions = [question('first', 'short-answer', 'term-definition', 'kafka'), question('second', 'short-answer', 'behavior-rule', 'kafka')]
+    const plan = planDailySet(context(questions, [], [], ['kafka']), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
+    const pickedIds = shortAnswerItems(plan).map((item) => item.questionId)
+    expect(pickedIds.filter((id) => id !== null).sort()).toEqual(['first', 'second'])
+    expect(pickedIds).toContain(null)
+  })
+
+  it('leaves a generation spec in the short answer format when the bank has no match', () => {
+    const plan = planDailySet(context([]), { date: MONDAY, difficulty: 'junior', dailyCount: 2 })
+    expect(shortAnswerItems(plan)).toHaveLength(3)
+    expect(shortAnswerItems(plan)[0]).toMatchObject({ questionId: null, spec: { format: 'short-answer', difficulty: 'junior' } })
+    expect(['term-definition', 'behavior-rule', 'applied-judgment']).toContain(shortAnswerItems(plan)[0].spec.category)
+  })
+
+  it('does not bring a low scored short answer back as a weakness review', () => {
+    const shortAnswer = question('q', 'short-answer', 'term-definition', 'kafka', { servedAt: '2026-10-01T00:00:00Z' })
+    const essay = question('q', 'concept', 'why', 'kafka', { servedAt: '2026-10-01T00:00:00Z' })
+    const attempts = [gradedAttempt('2026-10-01', 0)]
+    const options = { date: MONDAY, difficulty: 'middle', dailyCount: 2 } as const
+    expect(planDailySet(context([shortAnswer], attempts), options).items.some((item) => item.kind === 'weakness')).toBe(false)
+    expect(planDailySet(context([essay], attempts), options).items.some((item) => item.kind === 'weakness')).toBe(true)
   })
 })
 

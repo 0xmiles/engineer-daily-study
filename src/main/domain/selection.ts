@@ -1,5 +1,6 @@
 import type { Attempt, DailyItem, DailySet, Difficulty, Question, QuestionSpec, Topic } from '@shared/types'
-import { categoriesOf, scenarioCategoryForWeekday } from '@shared/taxonomy'
+import { DAILY_SHORT_ANSWER_COUNT } from '@shared/rules'
+import { categoriesOf, isShortAnswer, scenarioCategoryForWeekday } from '@shared/taxonomy'
 import { daysBetween, parseDateKey } from './dates'
 
 const WEAKNESS_SCORE_THRESHOLD = 60
@@ -144,16 +145,35 @@ function retryItem(context: SelectionContext, attempt: Attempt): DailyItem | nul
   return { kind: 'retry', questionId: question.id, spec: specOf(question), variantOfAttemptId: null, retryOfAttemptId: attempt.id, attemptId: null, generationError: null }
 }
 
-/** A weakness on a topic the user turned off is not brought back; it would otherwise block the ones behind it. */
-function attemptsOnEnabledTopics(context: SelectionContext): Attempt[] {
-  const topicsByQuestion = new Map(context.questions.map((question) => [question.id, question.topic]))
-  return context.attempts.filter((attempt) => context.topics.includes(topicsByQuestion.get(attempt.questionId) ?? ''))
+/**
+ * A weakness on a topic the user turned off is not brought back; it would otherwise block the ones behind it.
+ * Short answers stay out because one review comes per day, and three new ones a day would crowd out essay reviews.
+ */
+function attemptsEligibleForWeaknessReview(context: SelectionContext): Attempt[] {
+  const questionsById = new Map(context.questions.map((question) => [question.id, question]))
+  return context.attempts.filter((attempt) => {
+    const question = questionsById.get(attempt.questionId)
+    return question !== undefined && context.topics.includes(question.topic) && !isShortAnswer(question)
+  })
+}
+
+/** Topic exclusions reset when topics run out, so picked questions leave the candidates to keep one from repeating. */
+function plannedShortAnswerItems(context: SelectionContext, difficulty: Difficulty): DailyItem[] {
+  const items: DailyItem[] = []
+  let remainingContext = context
+  for (let count = 0; count < DAILY_SHORT_ANSWER_COUNT; count++) {
+    const item = plannedItem(remainingContext, 'short-answer', { format: 'short-answer', difficulty }, items.map((planned) => planned.spec.topic!))
+    items.push(item)
+    remainingContext = { ...remainingContext, questions: remainingContext.questions.filter((question) => question.id !== item.questionId) }
+  }
+  return items
 }
 
 /**
  * One scenario question of the weekday's category, one concept question on a different topic,
  * then a due weakness follow-up or, when three questions are requested, another concept question.
  * A postponed question that is due comes on top of those, since the user asked for it back.
+ * Short answer questions always close the set.
  */
 export function planDailySet(context: SelectionContext, options: DailyPlanOptions): DailySet {
   const scenarioCategory = scenarioCategoryForWeekday(parseDateKey(options.date).getDay())
@@ -164,7 +184,7 @@ export function planDailySet(context: SelectionContext, options: DailyPlanOption
   usedTopics.push(concept.spec.topic!)
   const items = [scenario, concept]
 
-  const dueAttempt = findDueWeaknessAttempt(attemptsOnEnabledTopics(context), options.date)
+  const dueAttempt = findDueWeaknessAttempt(attemptsEligibleForWeaknessReview(context), options.date)
   const followUp = dueAttempt ? weaknessItem(context, dueAttempt) : null
   if (followUp) items.push(followUp)
   else if (options.dailyCount === 3) items.push(plannedItem(context, 'concept', conceptSpec, usedTopics))
@@ -172,5 +192,5 @@ export function planDailySet(context: SelectionContext, options: DailyPlanOption
   const dueRetry = findDueRetryAttempt(context.attempts, options.date)
   const retry = dueRetry ? retryItem(context, dueRetry) : null
   if (retry) items.push(retry)
-  return { date: options.date, items }
+  return { date: options.date, items: [...items, ...plannedShortAnswerItems(context, options.difficulty)] }
 }

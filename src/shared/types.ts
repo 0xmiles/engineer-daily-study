@@ -1,4 +1,4 @@
-export type QuestionFormat = 'scenario' | 'concept'
+export type QuestionFormat = 'scenario' | 'concept' | 'short-answer'
 export type ScenarioCategory =
   | 'incident-diagnosis'
   | 'design-tradeoff'
@@ -8,7 +8,8 @@ export type ScenarioCategory =
   | 'code-review'
   | 'observability-operations'
 export type ConceptCategory = 'principle' | 'why' | 'comparison' | 'cross-layer' | 'architecture-principle'
-export type QuestionCategory = ScenarioCategory | ConceptCategory
+export type ShortAnswerCategory = 'term-definition' | 'behavior-rule' | 'applied-judgment'
+export type QuestionCategory = ScenarioCategory | ConceptCategory | ShortAnswerCategory
 export type BuiltInTopic =
   | 'kotlin-spring'
   | 'kafka'
@@ -182,7 +183,7 @@ export interface Attempt {
   inquiries?: Inquiry[]
 }
 
-export type DailyItemKind = 'scenario' | 'concept' | 'weakness' | 'retry'
+export type DailyItemKind = 'scenario' | 'concept' | 'short-answer' | 'weakness' | 'retry'
 
 export interface DailyItem {
   kind: DailyItemKind
@@ -324,7 +325,7 @@ interface InterviewBase {
 }
 
 export type TimedInterviewStatus = 'preparing' | 'preparation-failed' | 'in-progress' | 'submitted' | 'abandoned'
-export type TimedInterviewFormat = QuestionFormat | 'mixed'
+export type TimedInterviewFormat = Exclude<QuestionFormat, 'short-answer'> | 'mixed'
 
 export interface TimedInterviewItem {
   /** Null until preparation generates a question for spec. */

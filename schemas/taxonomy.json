@@ -1,7 +1,8 @@
 {
   "formats": [
     { "value": "scenario", "label": "시나리오형" },
-    { "value": "concept", "label": "개념형" }
+    { "value": "concept", "label": "개념형" },
+    { "value": "short-answer", "label": "단답형" }
   ],
   "categories": [
     { "value": "incident-diagnosis", "label": "장애 진단", "format": "scenario", "perspectives": ["가설의 폭", "조사 순서의 근거", "완화책과 근본 해결책의 구분", "재발 방지"] },
@@ -15,7 +16,10 @@
     { "value": "why", "label": "\"왜\" 질문", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
     { "value": "comparison", "label": "비교", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
     { "value": "cross-layer", "label": "계층 관통", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
-    { "value": "architecture-principle", "label": "아키텍처 원칙", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] }
+    { "value": "architecture-principle", "label": "아키텍처 원칙", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
+    { "value": "term-definition", "label": "용어와 정의", "format": "short-answer", "perspectives": [] },
+    { "value": "behavior-rule", "label": "동작 규칙", "format": "short-answer", "perspectives": [] },
+    { "value": "applied-judgment", "label": "상황 적용", "format": "short-answer", "perspectives": [] }
   ],
   "topics": [
     { "value": "kotlin-spring", "label": "Kotlin/Spring" },
