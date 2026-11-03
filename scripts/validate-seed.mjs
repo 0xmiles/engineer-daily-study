@@ -11,6 +11,13 @@ const contentSchema = readJson(join(projectRoot, 'schemas', 'question-content.sc
 const taxonomy = readJson(join(projectRoot, 'schemas', 'taxonomy.json'))
 const METADATA_FIELDS = ['id', 'source', 'reviewStatus', 'createdAt', 'variantOf']
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.45
+// Mirrors the "시나리오형 복합도" table in skills/daily-study-question-author/references/difficulty.md.
+const SCENARIO_COMPLEXITY = {
+  junior: { minRequiredItems: 3, length: { min: 400, max: 800 } },
+  middle: { minRequiredItems: 4, length: { min: 700, max: 1300 } },
+  senior: { minRequiredItems: 5, length: { min: 1000, max: 1800 } },
+}
+const MIN_SCENARIO_KEY_ISSUES = 3
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
@@ -51,6 +58,17 @@ function findContentQualityErrors(question) {
   if (question.keyIssues.length < 2) errors.push('at least 2 keyIssues')
   if (question.modelAnswer.length < 300) errors.push('modelAnswer is too short')
   if (question.modelAnswer.includes('생략')) errors.push('modelAnswer must be complete')
+  return errors
+}
+
+function findScenarioComplexityErrors(question) {
+  if (question.format !== 'scenario') return []
+  const expected = SCENARIO_COMPLEXITY[question.difficulty]
+  const errors = []
+  if (question.keyIssues.length < MIN_SCENARIO_KEY_ISSUES) errors.push(`scenario needs at least ${MIN_SCENARIO_KEY_ISSUES} keyIssues`)
+  if (question.rubric.required.length < expected.minRequiredItems) errors.push(`${question.difficulty} scenario needs at least ${expected.minRequiredItems} required rubric items`)
+  const { min, max } = question.recommendedLength
+  if (min !== expected.length.min || max !== expected.length.max) errors.push(`${question.difficulty} scenario recommendedLength must be ${expected.length.min}~${expected.length.max}`)
   return errors
 }
 
@@ -96,7 +114,7 @@ let failureCount = 0
 for (const fileName of fileNames) {
   const question = readJson(join(seedDirectory, fileName))
   const schemaErrors = validateAgainstSchema(contentSchema, stripMetadata(question))
-  const errors = [...schemaErrors, ...findMetadataErrors(question, fileName), ...findTaxonomyErrors(question), ...findContentQualityErrors(question)]
+  const errors = [...schemaErrors, ...findMetadataErrors(question, fileName), ...findTaxonomyErrors(question), ...findContentQualityErrors(question), ...findScenarioComplexityErrors(question)]
   if (errors.length > 0) {
     failureCount++
     console.log(`FAIL ${fileName}\n  - ${errors.join('\n  - ')}`)

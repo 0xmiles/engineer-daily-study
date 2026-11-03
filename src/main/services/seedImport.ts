@@ -21,22 +21,44 @@ function writeImportedIds(listPath: string, imported: Set<string>): void {
   renameSync(temporaryPath, listPath)
 }
 
-/**
- * Copies seed questions that were never imported before. The imported list is kept separately so a seed
- * question the user deleted does not come back on the next launch.
- */
-export function importSeedQuestions(repositories: Repositories, dataDirectory: string, seedDirectory: string): number {
-  if (!existsSync(seedDirectory)) return 0
-  const listPath = join(dataDirectory, IMPORTED_LIST_FILE)
-  const imported = readImportedIds(listPath)
-  const newSeeds = readdirSync(seedDirectory)
+function readSeedQuestions(seedDirectory: string): Question[] {
+  return readdirSync(seedDirectory)
     .filter((name) => name.endsWith('.json'))
     .map((name) => JSON.parse(readFileSync(join(seedDirectory, name), 'utf8')) as Question)
-    .filter((question) => !imported.has(question.id))
-  for (const question of newSeeds) {
+}
+
+function contentOf(question: Question): string {
+  const { id: _id, source: _source, reviewStatus: _reviewStatus, createdAt: _createdAt, variantOf: _variantOf, servedAt: _servedAt, ...content } = question
+  return JSON.stringify(content)
+}
+
+/**
+ * A seed rewritten in a later release replaces the stored copy only while nobody has seen it.
+ * Served or attempted questions keep their old content so past gradings still match their rubric.
+ */
+function refreshUnservedSeeds(repositories: Repositories, seeds: Question[]): void {
+  const attemptedQuestionIds = new Set(repositories.attempts.readAll().map((attempt) => attempt.questionId))
+  for (const seed of seeds) {
+    const stored = repositories.questions.read(seed.id)
+    if (!stored || stored.source !== 'seed' || stored.servedAt || attemptedQuestionIds.has(seed.id)) continue
+    if (contentOf(stored) === contentOf(seed)) continue
+    repositories.saveQuestion({ ...seed, reviewStatus: stored.reviewStatus })
+  }
+}
+
+/**
+ * Copies seed questions that were never imported before and refreshes unseen ones whose content changed.
+ * The imported list is kept separately so a seed question the user deleted does not come back on the next launch.
+ */
+export function importSeedQuestions(repositories: Repositories, dataDirectory: string, seedDirectory: string): void {
+  if (!existsSync(seedDirectory)) return
+  const listPath = join(dataDirectory, IMPORTED_LIST_FILE)
+  const imported = readImportedIds(listPath)
+  const seeds = readSeedQuestions(seedDirectory)
+  for (const question of seeds.filter((seed) => !imported.has(seed.id))) {
     if (!repositories.questions.read(question.id)) repositories.saveQuestion(question)
     imported.add(question.id)
   }
+  refreshUnservedSeeds(repositories, seeds.filter((seed) => imported.has(seed.id)))
   writeImportedIds(listPath, imported)
-  return newSeeds.length
 }

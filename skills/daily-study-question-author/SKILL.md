@@ -28,7 +28,7 @@ description: 백엔드 개발자용 실무 시나리오형·CS 개념형 서술�
 입력: `format`, `category`, `topic`, `customTopic`(사용자 정의 주제의 이름과 출제 범위, 기본 주제면 `null`), `difficulty`, `existingQuestions`(같은 주제·유형의 기존 문제 요약), `userFeedback`(출제 지침).
 
 1. `existingQuestions` 의 `keyIssues` 를 읽고, 겹치지 않는 핵심 쟁점을 고른다.
-2. `references/question-format.md` 규칙대로 문제를 쓴다.
+2. `references/question-format.md` 규칙대로 문제를 쓴다. 시나리오형은 먼저 얽힐 기술 계층과 원인 구조(근본 원인, 2차 증상, 오해를 부르는 단서)를 정한 뒤 `situation` 을 쓴다.
 3. 품질 점검표를 모두 통과하는지 확인한다. 통과하지 못하면 고쳐 쓴다.
 
 ### variant: 약점 재출제용 변형

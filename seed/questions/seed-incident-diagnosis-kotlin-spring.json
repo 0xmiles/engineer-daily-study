@@ -8,35 +8,35 @@
   "category": "incident-diagnosis",
   "topic": "kotlin-spring",
   "difficulty": "junior",
-  "title": "주문이 많은 판매자일수록 느려지는 오늘의 주문 목록 API",
-  "situation": "판매자 센터의 '오늘 들어온 주문' 화면은 `GET /sellers/{sellerId}/orders/today` 를 호출합니다. 이 API는 페이지를 나누지 않고 오늘 주문 전체를 한 번에 반환합니다. 스택은 Kotlin, Spring Boot 3, Spring Data JPA(Hibernate 6), MySQL 8 이고 인스턴스는 3대입니다.\n\n```kotlin\n@Entity\nclass Order(\n    @Id val id: Long,\n    val sellerId: Long,\n    @ManyToOne(fetch = FetchType.LAZY) val member: Member,\n    @OneToMany(mappedBy = \"order\", fetch = FetchType.LAZY) val items: List<OrderItem>,\n    val orderedAt: LocalDateTime,\n)\n\n@Transactional(readOnly = true)\nfun findTodayOrders(sellerId: Long): List<OrderSummary> =\n    orderRepository.findBySellerIdAndOrderedAtAfter(sellerId, LocalDate.now().atStartOfDay())\n        .map { order ->\n            OrderSummary(\n                orderId = order.id,\n                buyerName = order.member.name,\n                itemCount = order.items.size,\n                totalPrice = order.items.sumOf { it.price },\n            )\n        }\n```\n\n관찰된 사실은 다음과 같습니다.\n\n- 대형 판매자 A의 하루 주문 수가 3개월 사이에 약 150건에서 약 2,500건으로 늘었습니다.\n- 같은 기간 판매자 A가 이 API를 부를 때의 p99 응답 시간은 120ms에서 4.5초로 늘었습니다. 주문이 적은 판매자는 여전히 100ms 안팎입니다.\n- MySQL CPU 사용률은 30% 안팎이고, 슬로우 쿼리 로그(기준 1초)에는 이 API와 관련된 쿼리가 하나도 없습니다.\n- APM 트레이스를 보면 이 API 한 번의 호출 아래에 수 밀리초짜리 SELECT 스팬이 매우 많이 찍혀 있습니다.",
+  "title": "대형 판매자의 주문 화면이 느려지자 다른 판매자 API까지 실패함",
+  "situation": "판매자 센터의 '오늘 들어온 주문' 화면은 `GET /sellers/{sellerId}/orders/today` 를 호출합니다. 이 API는 페이지를 나누지 않고 오늘 주문 전체를 한 번에 반환하며, 화면이 열려 있는 동안 10초마다 자동으로 다시 호출됩니다.\n\n### 환경\n\n- Kotlin, Spring Boot 3, Spring Data JPA(Hibernate 6), MySQL 8, 인스턴스 3대\n- 인스턴스마다 HikariCP 커넥션 풀 최대 10개, 커넥션 획득 대기 제한 3초\n- 같은 인스턴스가 판매자 센터의 다른 API(상품 수정, 정산 조회 등)도 함께 처리합니다.\n- `orders` 테이블에는 `(seller_id, ordered_at)` 인덱스가 있습니다.\n\n```kotlin\n@Entity\n@Table(name = \"orders\")\nclass Order(\n    @Id val id: Long,\n    val sellerId: Long,\n    @ManyToOne(fetch = FetchType.LAZY) val member: Member,\n    @OneToMany(mappedBy = \"order\", fetch = FetchType.LAZY) val items: List<OrderItem>,\n    val orderedAt: LocalDateTime,\n)\n\n@Transactional(readOnly = true)\nfun findTodayOrders(sellerId: Long): List<OrderSummary> =\n    orderRepository.findBySellerIdAndOrderedAtAfter(sellerId, LocalDate.now().atStartOfDay())\n        .map { order ->\n            OrderSummary(\n                orderId = order.id,\n                buyerName = order.member.name,\n                itemCount = order.items.size,\n                totalPrice = order.items.sumOf { it.price },\n            )\n        }\n```\n\n### 관찰\n\n- 대형 판매자 A의 하루 주문 수가 3개월 사이에 약 150건에서 약 2,500건으로 늘었습니다. A는 상담 직원 60명이 이 화면을 하루 종일 열어 둡니다.\n- A가 이 API를 부를 때 응답 시간은 3개월 전 p99 120ms에서 지금 평균 약 4초, p99 4.5초로 늘었습니다. 주문이 적은 판매자는 여전히 100ms 안팎입니다.\n- MySQL CPU 사용률은 30% 안팎이고, 슬로우 쿼리 로그(기준 1초)에는 이 API와 관련된 쿼리가 없습니다.\n- APM 트레이스를 보면 A의 요청 한 번 아래에 수 밀리초짜리 SELECT 스팬이 수천 개 찍혀 있습니다.\n- 지난주부터 평일 낮에 다른 판매자들의 상품 수정 API가 `Connection is not available, request timed out` 오류로 간헐적으로 실패합니다. 이 오류는 A의 상담 직원이 근무하지 않는 주말에는 거의 없습니다.",
   "requirements": [
-    "응답 시간이 판매자의 주문 수에 비례해서 늘어나는 원인을 설명하세요.",
-    "그 원인을 개발 환경이나 운영 환경에서 어떻게 확인할지 쓰세요.",
-    "해결책을 제시하고, 그 해결책을 쓸 때 주의할 점을 하나 이상 쓰세요."
+    "판매자 A의 요청이 주문 수에 비례해 느려지는 원인을 설명하고, 그 원인을 확인할 방법을 쓰세요.",
+    "판매자 A와 관계없는 상품 수정 API까지 실패하는 이유를 앞의 원인과 연결해 설명하세요.",
+    "바로 적용할 완화책과 근본 해결책을 구분해 제시하고, 해결책을 쓸 때 주의할 점을 하나 이상 쓰세요."
   ],
   "recommendedLength": {
-    "min": 300,
-    "max": 600
+    "min": 400,
+    "max": 800
   },
   "keyIssues": [
     "지연 로딩 연관 관계를 순회하며 생기는 JPA N+1 쿼리",
-    "fetch join, 엔티티 그래프, 배치 조회 크기로 쿼리 수 줄이기",
-    "컬렉션 fetch join과 페이지네이션의 충돌"
+    "긴 읽기 트랜잭션의 커넥션 점유로 같은 인스턴스의 다른 API가 겪는 커넥션 풀 고갈",
+    "fetch join, 배치 조회 크기, 집계 쿼리로 쿼리 수 줄이기와 커넥션 풀 크기 조정의 구분"
   ],
   "rubric": {
     "required": [
       {
-        "point": "N+1 쿼리 지목",
-        "explanation": "주문 목록을 한 번 조회한 뒤 `order.member` 와 `order.items` 에 접근할 때마다 지연 로딩 쿼리가 나간다는 점을 설명해야 한다. 주문이 N건이면 최대 1+2N번 쿼리가 실행되어 응답 시간이 주문 수에 비례한다. 쿼리 하나는 빨라서 슬로우 쿼리 로그에 잡히지 않는다는 점까지 연결하면 충족이다."
+        "point": "N+1 쿼리 지목과 확인 방법",
+        "explanation": "주문 목록을 한 번 조회한 뒤 `order.member` 와 `order.items` 에 접근할 때마다 지연 로딩 쿼리가 나가 주문 N건에 최대 1+2N번 쿼리가 실행되고, 쿼리 하나는 빨라 슬로우 쿼리 로그에 잡히지 않는다는 점을 설명해야 한다. Hibernate SQL 로그나 통계, 쿼리 계측 도구, APM 스팬 수 중 하나로 요청당 쿼리 수가 주문 수에 비례하는지 확인하는 방법을 함께 써야 충족이다."
       },
       {
-        "point": "원인 확인 방법",
-        "explanation": "Hibernate SQL 로그(`org.hibernate.SQL`)나 통계(`hibernate.generate_statistics`), datasource-proxy·p6spy 같은 쿼리 계측, APM 트레이스의 스팬 수 중 하나로 요청 하나당 쿼리 수를 세고, 그 수가 주문 수에 비례하는지 확인하는 방법을 제시해야 한다."
+        "point": "커넥션 풀 고갈까지의 인과 연결",
+        "explanation": "`@Transactional` 메서드는 수천 번의 쿼리를 도는 약 4초 동안 커넥션 하나를 계속 쥐고 있다는 점, 상담 직원 60명이 10초마다 호출하면 초당 6건 × 4초로 동시에 약 24개, 인스턴스당 약 8개의 커넥션이 묶여 풀 10개 중 다른 API가 쓸 몫이 거의 남지 않는다는 점, 그래서 상품 수정 API가 3초 대기 제한을 넘겨 실패한다는 점을 연결해야 한다. 주말에는 오류가 거의 없다는 관찰을 근거로 쓰면 더 좋다."
       },
       {
-        "point": "쿼리 수를 줄이는 해결책",
-        "explanation": "JPQL `join fetch` 나 `@EntityGraph` 로 연관 엔티티를 함께 조회하는 방법, `hibernate.default_batch_fetch_size` 나 `@BatchSize` 로 지연 로딩을 IN 절로 묶는 방법, 필요한 값만 집계 쿼리와 DTO 프로젝션으로 조회하는 방법 중 하나 이상을 제시하고 주의점을 함께 써야 한다."
+        "point": "완화책과 계층을 넘는 근본 해결의 구분",
+        "explanation": "근본 해결로 쿼리 수를 줄이는 방법(`join fetch` 나 `@EntityGraph`, `default_batch_fetch_size` 나 `@BatchSize`, 개수와 합계만 집계 쿼리와 DTO로 조회) 중 하나 이상과 주의점을 제시해야 한다. 완화책으로 자동 새로고침 주기 늘리기, 이 API의 동시 실행 제한, 페이지네이션 중 하나 이상을 제시하고, 커넥션 풀 크기만 늘리는 것은 근본 해결이 아니라는 점을 구분해야 한다."
       }
     ],
     "bonus": [
@@ -46,31 +46,31 @@
       },
       {
         "point": "둘 이상의 컬렉션 fetch join 제한",
-        "explanation": "`List` 로 매핑한 컬렉션 두 개 이상을 동시에 fetch join 하면 `MultipleBagFetchException` 이 나고, 성공하더라도 행이 곱으로 불어난다는 점을 짚는다."
+        "explanation": "`List` 로 매핑한 컬렉션 두 개 이상을 함께 fetch join 하면 `MultipleBagFetchException` 이 나고, 성공하더라도 행이 곱으로 불어난다는 점을 짚는다."
       },
       {
-        "point": "목록 크기 제한",
-        "explanation": "주문 수에 상한이 없는 API 자체가 위험하므로 페이지네이션을 도입해야 한다고 제안한다."
+        "point": "API별 커넥션 사용 격리",
+        "explanation": "무거운 조회 API가 다른 API의 커넥션을 빼앗지 못하게 동시 실행 수를 제한하거나 별도 풀이나 읽기 복제본으로 분리하는 방안을 제시한다."
       }
     ],
     "deductions": [
       {
-        "point": "EAGER로 바꾸면 해결된다는 주장",
-        "explanation": "JPQL이나 Spring Data 메서드 쿼리로 조회하면 EAGER 연관도 조회 후 별도 쿼리로 채워지므로 N+1이 그대로 남고, 이 연관이 필요 없는 다른 조회까지 느려진다."
+        "point": "2차 증상만 원인으로 지목하고 그것만 고치는 답",
+        "explanation": "커넥션 풀 고갈만 보고 풀 크기만 늘리는 답이다. 쿼리 수가 주문 수에 비례하는 구조가 남아 있으면 A의 주문이 더 늘 때 다시 고갈되고, 인스턴스 수 × 풀 크기만큼 DB 연결 수도 늘어난다."
       },
       {
-        "point": "인덱스 추가로 해결된다는 주장",
-        "explanation": "개별 쿼리는 이미 수 밀리초로 빠르다. 문제는 쿼리 하나의 속도가 아니라 쿼리 횟수다."
+        "point": "EAGER로 바꾸면 해결된다는 주장",
+        "explanation": "JPQL이나 Spring Data 메서드 쿼리로 조회하면 EAGER 연관도 조회 후 별도 쿼리로 채워지므로 N+1이 그대로 남고, 이 연관이 필요 없는 다른 조회까지 느려진다."
       }
     ],
     "commonMistakes": [
       {
         "point": "슬로우 쿼리 로그만 보고 DB 문제가 아니라고 결론 내림",
-        "explanation": "느린 쿼리가 없어도 빠른 쿼리 수천 개의 네트워크 왕복이 쌓이면 응답이 느려진다."
+        "explanation": "느린 쿼리가 없어도 빠른 쿼리 수천 개의 왕복이 쌓이면 응답이 느려지고, 그동안 커넥션이 묶인다."
       },
       {
-        "point": "주문마다 회원 쿼리가 반드시 나간다고 단정함",
-        "explanation": "같은 회원은 영속성 컨텍스트에 이미 올라와 있으면 다시 조회하지 않으므로 회원 쿼리 수는 서로 다른 회원 수만큼이다."
+        "point": "인덱스 추가로 해결된다고 생각함",
+        "explanation": "개별 쿼리는 이미 수 밀리초로 빠르다. 문제는 쿼리 하나의 속도가 아니라 횟수다."
       }
     ]
   },
@@ -80,12 +80,12 @@
     "완화책과 근본 해결책의 구분",
     "재발 방지"
   ],
-  "modelAnswer": "### 1. 원인\n\n전형적인 N+1 쿼리입니다. `findBySellerIdAndOrderedAtAfter` 가 주문 목록을 한 번 조회하고, `map` 안에서 `order.member.name` 과 `order.items` 에 접근할 때마다 지연 로딩 쿼리가 따로 나갑니다. 주문이 2,500건이면 최대 5,001번 쿼리가 실행됩니다(같은 회원은 다시 조회하지 않으므로 회원 쿼리는 서로 다른 회원 수만큼입니다). 쿼리 하나는 수 밀리초라 슬로우 쿼리 로그에는 남지 않지만, 네트워크 왕복이 주문 수만큼 쌓여 응답 시간이 주문 수에 비례해 늘어납니다.\n\n### 2. 확인 방법\n\n개발 환경에서 `org.hibernate.SQL` 로그를 켜거나 `hibernate.generate_statistics` 로 실행된 쿼리 수를 확인합니다. 운영 환경에서는 APM 트레이스의 SELECT 스팬 수를 세어, 판매자 A 요청의 스팬 수가 주문 수의 약 두 배인지 봅니다.\n\n### 3. 해결책과 주의점\n\n`select o from Order o join fetch o.member join fetch o.items where ...` 처럼 fetch join으로 한 번에 가져오거나, `hibernate.default_batch_fetch_size` 를 100 정도로 두어 지연 로딩을 IN 절로 묶습니다. 이 화면은 개수와 합계만 필요하므로 `group by` 집계 쿼리로 DTO를 바로 조회하는 방법이 가장 가볍습니다.\n\n주의할 점: 컬렉션을 fetch join 하면서 페이지 조건을 걸면 Hibernate가 결과 전체를 메모리로 읽은 뒤 자르므로, 페이지네이션을 도입할 때는 배치 조회 크기 방식이나 집계 쿼리를 씁니다. `List` 컬렉션 두 개를 동시에 fetch join 하면 예외가 납니다. 주문 수에 상한이 없는 API 자체도 위험하므로 페이지네이션을 함께 도입합니다.",
+  "modelAnswer": "### 1. 원인과 확인 방법\n\nN+1 쿼리입니다. 주문 목록을 한 번 조회한 뒤 `map` 안에서 `order.member.name` 과 `order.items` 에 접근할 때마다 지연 로딩 쿼리가 따로 나갑니다. 주문이 2,500건이면 최대 5,001번 쿼리가 실행됩니다. 쿼리 하나는 수 밀리초라 슬로우 쿼리 로그에는 남지 않지만, 왕복이 주문 수만큼 쌓여 응답 시간이 주문 수에 비례합니다.\n\n확인은 개발 환경에서 `org.hibernate.SQL` 로그나 `hibernate.generate_statistics` 로 요청당 쿼리 수를 세고, 운영에서는 APM 스팬 수가 A의 주문 수의 약 두 배인지 봅니다.\n\n### 2. 다른 API까지 실패하는 이유\n\n`@Transactional` 메서드는 쿼리를 도는 약 4초 동안 커넥션 하나를 계속 쥐고 있습니다. 상담 직원 60명이 10초마다 호출하면 초당 6건이고, 6건 × 4초로 동시에 약 24개, 인스턴스당 약 8개의 커넥션이 이 API에 묶입니다. 풀 10개 중 남는 몫이 거의 없어, 같은 인스턴스의 상품 수정 API가 3초 안에 커넥션을 얻지 못하고 실패합니다. A의 직원이 쉬는 주말에 오류가 거의 없는 것도 이 연결을 뒷받침합니다.\n\n### 3. 완화책과 근본 해결책\n\n**완화책:** 자동 새로고침 주기를 늘리고, 이 API의 동시 실행 수를 인스턴스당 몇 개로 제한해 다른 API의 커넥션을 지킵니다.\n\n**근본 해결책:** 이 화면은 개수와 합계만 필요하므로 `group by` 집계 쿼리로 DTO를 바로 조회하는 방법이 가장 가볍습니다. 엔티티가 필요하면 `join fetch` 나 `default_batch_fetch_size` 로 쿼리 수를 줄입니다. 주문 수에 상한이 없는 응답이므로 페이지네이션도 도입합니다.\n\n**주의점:** 컬렉션 fetch join에 페이지 조건을 걸면 Hibernate가 결과 전체를 메모리로 읽은 뒤 자릅니다. 커넥션 풀만 키우면 문제가 미뤄질 뿐이고 DB 연결 수가 늘어납니다.",
   "relatedStudyTopics": [
     "JPA N+1 문제와 fetch join",
     "Hibernate default_batch_fetch_size",
-    "Spring Data JPA @EntityGraph",
-    "Hibernate 컬렉션 fetch join 페이징 경고",
-    "MultipleBagFetchException"
+    "HikariCP maximumPoolSize와 connectionTimeout",
+    "Spring 트랜잭션과 커넥션 점유 시간",
+    "Hibernate 컬렉션 fetch join 페이징 경고"
   ]
 }

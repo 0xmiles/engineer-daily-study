@@ -8,69 +8,69 @@
   "category": "consistency-concurrency",
   "topic": "mysql-postgresql",
   "difficulty": "junior",
-  "title": "티켓 오픈 직후 같은 좌석이 두 명에게 예약됨",
-  "situation": "공연 예매 서비스(Kotlin/Spring Boot, MySQL 8.0 InnoDB, 기본 격리 수준, 애플리케이션 인스턴스 3대)의 좌석 예약 API는 다음 순서로 동작합니다. 메서드 전체에 `@Transactional` 이 붙어 있습니다.\n\n```kotlin\n@Transactional\nfun reserve(performanceId: Long, seatId: Long, userId: Long) {\n    val alreadyReserved = reservationRepository.existsByPerformanceIdAndSeatId(performanceId, seatId)\n    if (alreadyReserved) throw SeatAlreadyReservedException()\n    reservationRepository.save(Reservation(performanceId, seatId, userId))\n}\n```\n\n`reservation` 테이블에는 기본 키(`id`, auto increment) 외에 `(performance_id, seat_id)` 에 일반 인덱스만 있습니다. 평소에는 문제가 없었지만, 인기 공연의 티켓 오픈 직후 1분 동안 초당 약 2,000건의 예약 요청이 몰렸고, 그날 좌석 37개가 각각 두 명에게 예약된 상태로 저장되었습니다. 애플리케이션 로그에는 오류가 없었습니다.",
+  "title": "적립을 연달아 받은 회원의 포인트 잔액만 이력 합계보다 적은 현상",
+  "situation": "## 환경\n\n포인트 서비스(Kotlin/Spring Boot, 인스턴스 4대)는 MySQL 8.0 주 DB 1대와 읽기 복제본 1대를 씁니다. 데이터소스 라우팅 설정에 따라 `@Transactional(readOnly = true)` 메서드의 쿼리는 복제본으로, 나머지 쿼리는 주 DB로 갑니다. 복제 지연은 평소 0.1초 미만입니다.\n\n적립 요청은 구매 확정, 리뷰 작성, 이벤트 참여에서 들어오며 다음 코드로 처리됩니다.\n\n```kotlin\nfun earn(memberId: Long, amount: Long, reason: String) {\n    val balance = pointQueryService.getBalance(memberId) // @Transactional(readOnly = true)\n    pointCommandService.saveEarning(memberId, balance + amount, amount, reason) // @Transactional\n}\n```\n\n`saveEarning` 은 `UPDATE member_point SET balance = ? WHERE member_id = ?` 로 계산된 잔액을 저장하고, 같은 트랜잭션에서 `point_history` 에 적립 내역을 INSERT 합니다.\n\n## 관찰\n\n- 하루 약 80명의 잔액이 `point_history` 합계보다 적습니다. 이력 행은 빠짐없이 남아 있습니다.\n- 해당 회원은 모두 2초 이내 간격으로 적립을 두 번 이상 받았습니다. 예를 들어 구매 확정 직후 바로 리뷰를 써서 적립을 받은 경우입니다.\n- 불일치는 대부분 매일 10:00~10:30에 생깁니다. 이 시간에는 구매 확정 배치가 대량 UPDATE 를 실행하고, 복제 지연이 1~3초로 늘어납니다.\n- 애플리케이션 오류 로그는 없습니다.",
   "requirements": [
-    "같은 좌석이 두 명에게 예약되는 경로를 두 요청의 실행 순서로 설명하세요.",
-    "DB 수준에서 중복 예약을 막는 방법을 제시하고, 그때 애플리케이션이 실패를 어떻게 처리해야 하는지 쓰세요.",
-    "이미 중복으로 저장된 37건을 어떻게 찾아 정리할지 쓰세요."
+    "적립금이 사라지는 경로를 두 적립 요청의 처리 순서와 각 요청이 읽은 잔액으로 설명하세요.",
+    "불일치가 10시대에, 짧은 간격으로 적립받은 회원에게만 몰리는 이유를 설명하세요.",
+    "재발을 막는 수정 방법과 이미 틀어진 잔액을 바로잡는 방법을 쓰세요."
   ],
   "recommendedLength": {
-    "min": 300,
-    "max": 600
+    "min": 400,
+    "max": 800
   },
   "keyIssues": [
-    "확인 후 저장 사이의 경쟁 조건(check-then-act)",
-    "유니크 제약으로 중복 예약 차단",
-    "비관적 락과 조건부 갱신을 이용한 좌석 선점"
+    "읽기 복제본에서 읽은 오래된 잔액으로 계산한 값을 주 DB에 덮어쓰는 갱신 손실",
+    "대량 배치로 늘어난 복제 지연이 연속 요청 사이의 손실 구간을 넓히는 문제",
+    "상대 갱신과 이력 합계 기준 잔액 재계산"
   ],
   "rubric": {
     "required": [
       {
-        "point": "경쟁 조건의 실행 순서",
-        "explanation": "요청 A와 B가 모두 존재 여부 조회에서 '없음'을 본 뒤 둘 다 INSERT 하는 순서를 설명해야 한다. 일반 SELECT 는 락을 걸지 않는 스냅숏 읽기이고, 트랜잭션은 조회와 저장 사이의 틈을 막아 주지 않는다는 점이 핵심이다."
+        "point": "근본 원인 식별",
+        "explanation": "잔액을 `readOnly` 라우팅으로 복제본에서 읽고, 계산한 절댓값을 주 DB에 덮어쓴다는 점을 지목해야 한다. 두 번째 요청이 첫 적립이 아직 복제되지 않은 잔액을 읽어 첫 적립을 지우는 순서를 구체적인 값으로 설명하면 충족이다."
       },
       {
-        "point": "DB 수준의 방어책",
-        "explanation": "다음 중 하나 이상을 제시하면 충족이다. (1) `(performance_id, seat_id)` 유니크 제약을 걸어 두 번째 INSERT 가 중복 키 오류로 실패하게 한다. (2) 좌석 행을 미리 만들어 두고 `SELECT ... FOR UPDATE` 로 잠근 뒤 상태를 바꾼다. (3) `UPDATE seat SET status = 'RESERVED' WHERE id = ? AND status = 'AVAILABLE'` 처럼 조건부 갱신을 하고 영향받은 행 수로 성공 여부를 판단한다."
+        "point": "복제 지연과 증상의 연결",
+        "explanation": "두 적립 간격이 복제 지연보다 짧을 때만 손실이 생기며, 평소 0.1초 미만이던 지연이 10시대 배치로 1~3초가 되어 2초 이내 연속 적립이 손실 구간에 들어온다는 점을 설명해야 한다. 이력 INSERT 는 둘 다 남고 두 트랜잭션 모두 정상 커밋되어 오류 없이 잔액만 이력 합계보다 적어진다는 점까지 이어야 충족이다."
       },
       {
-        "point": "실패 처리",
-        "explanation": "중복 키 오류(Spring 에서는 `DataIntegrityViolationException` 계열)나 영향받은 행 수 0을 '이미 예약된 좌석' 응답으로 바꿔 사용자에게 돌려줘야 하고, 이 실패를 재시도하지 않아야 한다."
+        "point": "계층을 넘는 수정과 보정",
+        "explanation": "갱신에 쓸 값을 복제본에서 읽지 않도록 하고, 주 DB에서 `balance = balance + ?` 같은 상대 갱신이나 `SELECT ... FOR UPDATE` 후 갱신으로 바꿔야 한다. 이미 틀어진 잔액은 `point_history` 합계를 기준으로 회원별로 다시 계산해 바로잡는 방법을 제시해야 충족이다."
       }
     ],
     "bonus": [
       {
-        "point": "존재하지 않는 행에 대한 FOR UPDATE의 함정",
-        "explanation": "예약 행이 아직 없을 때 `SELECT ... FOR UPDATE` 를 하면 InnoDB 기본 격리 수준에서 갭 락이 걸린다. 갭 락끼리는 서로 막지 않으므로 두 요청이 모두 조회를 통과한 뒤 INSERT 에서 서로를 기다려 데드락이 날 수 있다는 점을 지적한다."
+        "point": "주 DB만으로도 생기는 갱신 손실",
+        "explanation": "주 DB에서 읽더라도 락 없이 읽고 계산한 값을 덮어쓰면 동시에 들어온 두 요청에서 같은 손실이 생기므로, 복제본 문제만 고쳐서는 부족하다고 지적한다."
       },
       {
-        "point": "유니크 제약 적용 전 정리 순서",
-        "explanation": "중복 행이 남아 있으면 유니크 인덱스 생성이 실패하므로 정리를 먼저 해야 한다는 점을 언급한다."
+        "point": "배치의 복제 지연 줄이기",
+        "explanation": "구매 확정 배치를 작은 단위로 나눠 커밋하면 복제 지연이 줄어든다고 설명한다. 다만 이것은 손실 구간을 좁힐 뿐 해결책은 아니라는 점을 함께 쓴다."
       },
       {
-        "point": "취소 이력과 유니크 제약",
-        "explanation": "취소된 예약 행을 지우지 않고 상태만 바꾸는 구조라면 단순 유니크 제약이 재예약까지 막으므로, 좌석 상태 테이블을 따로 두거나 활성 예약만 유일하게 만드는 설계가 필요하다고 설명한다."
+        "point": "재발 감시",
+        "explanation": "잔액과 이력 합계를 정기적으로 대조해 불일치 회원 수를 지표로 감시한다."
       }
     ],
     "deductions": [
       {
-        "point": "애플리케이션 메모리 락으로 해결",
-        "explanation": "`synchronized` 나 로컬 락은 한 인스턴스 안에서만 유효하므로 인스턴스 3대 환경에서 중복을 막지 못한다."
+        "point": "복제 지연만 줄이면 된다는 주장",
+        "explanation": "배치 조정이나 복제 성능 개선만 해결책으로 내면 감점한다. 지연이 0이 될 수는 없으므로 손실 구간이 남고, 읽고 덮어쓰는 구조 자체가 동시 요청에서 같은 손실을 만든다."
       },
       {
-        "point": "격리 수준만 올리면 된다는 주장",
-        "explanation": "기본 격리 수준(REPEATABLE READ)의 일반 SELECT 는 스냅숏을 읽을 뿐 다른 트랜잭션의 INSERT 를 막지 않는다. SERIALIZABLE 로 올리면 막히긴 하지만 데드락이 늘어나므로, 근거 없이 격리 수준 변경만 제시하면 감점한다."
+        "point": "애플리케이션 메모리 락으로 해결",
+        "explanation": "`synchronized` 같은 로컬 락은 인스턴스 4대 환경에서 다른 인스턴스의 요청을 막지 못하고, 복제본에서 오래된 값을 읽는 문제도 그대로 남는다."
       }
     ],
     "commonMistakes": [
       {
-        "point": "오류 로그가 없다는 점을 놓침",
-        "explanation": "두 INSERT 모두 정상 커밋되었기 때문에 로그에 오류가 없다는 점을 연결하지 못하고 네트워크 재시도 같은 다른 원인을 찾는 경우가 많다."
+        "point": "복제본 라우팅 간과",
+        "explanation": "두 요청이 1~2초 간격으로 순차 실행되는데도 동시 실행 경합만으로 설명하려다, 첫 번째 커밋 이후에 읽은 값이 왜 오래되었는지 설명하지 못한다."
       },
       {
-        "point": "정리 기준 누락",
-        "explanation": "중복 건 중 어느 예약을 남길지(먼저 저장된 행, 결제 완료 여부)와 남지 못한 사용자에게 취소·환불 안내를 해야 한다는 점을 빠뜨린다."
+        "point": "보정 중 새 적립과의 경합",
+        "explanation": "이력 합계로 잔액을 다시 쓰는 동안 들어온 적립을 덮어쓰지 않도록 회원 행을 잠그거나 상대 갱신으로 차이만 더해야 한다는 점을 빠뜨린다."
       }
     ]
   },
@@ -80,11 +80,11 @@
     "방어책의 구체성",
     "데이터 보정"
   ],
-  "modelAnswer": "### 1. 중복 예약 경로\n\nA가 존재 여부를 조회해 '없음'을 보고, B도 A가 아직 커밋하지 않았으므로 '없음'을 봅니다. 이후 A와 B가 각각 INSERT 하고 커밋합니다. 일반 SELECT 는 락을 걸지 않고, `@Transactional` 은 조회와 저장 사이에 다른 트랜잭션이 끼어드는 것을 막지 않습니다. 두 커밋 모두 정상이라 오류 로그도 남지 않습니다.\n\n### 2. DB 수준의 방어책과 실패 처리\n\n가장 단순한 방법은 `(performance_id, seat_id)` 에 유니크 제약을 거는 것입니다. 그러면 늦게 INSERT 한 쪽이 중복 키 오류로 실패합니다. 좌석 상태 테이블이 있다면 `status='AVAILABLE'` 조건을 건 UPDATE 의 영향받은 행 수로 성공을 판단해도 됩니다. 예약 행이 아직 없는 상태에서 `SELECT ... FOR UPDATE` 를 쓰면 갭 락끼리 충돌하지 않아 데드락이 날 수 있으므로 피합니다. 애플리케이션은 중복 키 오류나 갱신 0건을 '이미 예약된 좌석' 응답으로 바꾸고 재시도하지 않습니다.\n\n### 3. 기존 중복 정리\n\n`GROUP BY performance_id, seat_id HAVING COUNT(*) > 1` 로 중복 좌석을 찾고, 먼저 저장된 예약(작은 `id`)을 남깁니다. 나머지 예약은 취소 처리하고 결제 환불과 고객 안내를 진행합니다. 중복이 남아 있으면 유니크 인덱스를 만들 수 없으므로 정리를 끝낸 뒤 제약을 추가합니다.",
+  "modelAnswer": "### 1. 적립금이 사라지는 경로\n\n잔액 1,000원인 회원에게 적립 A(500원)와 B(300원)가 1초 간격으로 들어오고 복제 지연이 2초라고 하겠습니다. A는 복제본에서 1,000을 읽고 주 DB에 1,500을 저장합니다. 1초 뒤 B가 복제본에서 읽는 값은 아직 A가 반영되지 않은 1,000이므로, B는 1,300을 주 DB에 덮어씁니다. A의 500원이 사라지지만 두 트랜잭션 모두 정상 커밋되고 이력도 두 건 모두 남으므로, 오류 없이 잔액만 이력 합계보다 적어집니다. 근본 원인은 갱신에 쓸 값을 복제본에서 읽고, 계산한 절댓값으로 덮어쓰는 것입니다.\n\n### 2. 10시대·짧은 간격 적립에 몰리는 이유\n\n두 적립 간격이 복제 지연보다 짧아야 두 번째 요청이 오래된 값을 읽습니다. 평소 지연은 0.1초 미만이라 이런 일이 드물지만, 10시대에는 구매 확정 배치 때문에 지연이 1~3초로 늘어 2초 이내 연속 적립이 손실 구간에 들어옵니다. 구매 확정 자체가 적립을 만들므로 구매 확정 직후 리뷰 적립 같은 연속 적립도 이 시간에 많습니다.\n\n### 3. 수정과 보정\n\n- 잔액 갱신을 주 DB 한 트랜잭션에서 `UPDATE member_point SET balance = balance + ? WHERE member_id = ?` 로 바꾸고 이력 INSERT 와 함께 커밋합니다. 갱신 전 값이 필요하면 주 DB에서 `SELECT ... FOR UPDATE` 로 읽습니다. 주 DB에서 읽더라도 락 없이 읽고 덮어쓰면 동시 요청에서 같은 손실이 생기므로 상대 갱신이나 락이 필요합니다.\n- 보정은 이력 합계와 잔액이 다른 회원을 찾아, 회원 행을 잠근 상태에서 이력 합계로 잔액을 다시 계산해 저장합니다. 이후 매일 대조해 재발을 감시합니다.",
   "relatedStudyTopics": [
-    "check-then-act 경쟁 조건",
-    "MySQL 유니크 제약과 중복 키 오류 처리",
-    "InnoDB 갭 락과 넥스트 키 락",
+    "갱신 손실(lost update)과 원자적 상대 갱신",
+    "Spring readOnly 트랜잭션과 데이터소스 라우팅",
+    "MySQL 복제 지연과 쓰기 후 읽기 일관성",
     "SELECT FOR UPDATE와 조건부 UPDATE 비교"
   ]
 }
