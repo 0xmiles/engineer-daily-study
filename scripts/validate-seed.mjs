@@ -19,7 +19,7 @@ const SCENARIO_COMPLEXITY = {
 }
 const MIN_SCENARIO_KEY_ISSUES = 3
 // Mirrors SHORT_ANSWER_LENGTH in src/shared/rules.ts.
-const SHORT_ANSWER_LENGTH = { min: 5, max: 150 }
+const SHORT_ANSWER_LENGTH = { min: 1, max: 150 }
 const MIN_SHORT_ANSWER_MODEL_LENGTH = 30
 
 function readJson(path) {

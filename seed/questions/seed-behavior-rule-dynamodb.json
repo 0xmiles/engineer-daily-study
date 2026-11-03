@@ -12,7 +12,7 @@
   "situation": "DynamoDB 글로벌 보조 인덱스(GSI)를 조회할 때 강력한 일관성 읽기를 요청할 수 있나요? 가능 여부와 이유를 답하세요.",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

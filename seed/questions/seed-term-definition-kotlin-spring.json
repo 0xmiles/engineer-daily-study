@@ -12,7 +12,7 @@
   "situation": "Spring 은 `@Transactional` 이 붙은 Bean 을 그대로 주입하지 않고, 대상 객체를 감싸 메서드 호출 앞뒤에 트랜잭션 처리를 끼워 넣는 객체를 주입합니다. 이 객체를 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

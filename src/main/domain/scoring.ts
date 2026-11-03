@@ -35,9 +35,15 @@ function deduction(result: GradingResult): number {
   return Math.min(MAX_DEDUCTION, result.deductionsApplied.length * DEDUCTION_PER_ITEM)
 }
 
+/** One verdict decides a short answer; a result without one must fail grading rather than read as a wrong answer. */
+function shortAnswerScore(result: GradingResult): number {
+  const [verdict] = result.requiredCoverage
+  if (!verdict) throw new Error('채점 결과에 판정이 없습니다. 다시 채점해 주세요.')
+  return COVERAGE_CREDIT[verdict.status] * 100
+}
+
 export function computeTotalScore(question: QuestionContent, result: GradingResult): number {
-  // A short answer has no perspectives or bonus items, so the verdict alone decides the score.
-  if (isShortAnswer(question)) return Math.round(coverageRatio(result) * 100)
+  if (isShortAnswer(question)) return shortAnswerScore(result)
   const total = coverageRatio(result) * REQUIRED_WEIGHT + perspectiveScore(result) + bonusScore(question, result) - deduction(result)
   return Math.round(Math.min(100, Math.max(0, total)))
 }

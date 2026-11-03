@@ -9,7 +9,7 @@ export const POSTPONE_DAYS = 3
 /** Short answer questions added to every daily set, on top of the essay questions the daily count setting controls. */
 export const DAILY_SHORT_ANSWER_COUNT = 3
 /** Fixed for every short answer question; mirrored in scripts/validate-seed.mjs. */
-export const SHORT_ANSWER_LENGTH = { min: 5, max: 150 } as const
+export const SHORT_ANSWER_LENGTH = { min: 1, max: 150 } as const
 
 /** Follow-up questions one graded attempt can collect across rounds. */
 export const MAX_FOLLOW_UPS = 4

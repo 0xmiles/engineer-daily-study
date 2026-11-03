@@ -12,7 +12,7 @@
   "situation": "최신순 목록을 `OFFSET` 방식으로 조회합니다. 사용자가 1페이지를 본 뒤 2페이지를 요청하기 전에 새 글 5개가 추가되었습니다. 2페이지 결과에 어떤 문제가 생기나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

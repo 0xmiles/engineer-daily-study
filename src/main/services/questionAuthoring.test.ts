@@ -39,15 +39,28 @@ describe('generateQuestion', () => {
       ...content,
       requirements: ['extra requirement'],
       recommendedLength: { min: 300, max: 600 },
-      rubric: { ...content.rubric, bonus: [{ point: 'bonus', explanation: '' }] },
+      rubric: {
+        ...content.rubric,
+        required: [{ point: 'first', explanation: '' }, { point: 'second', explanation: '' }],
+        bonus: [{ point: 'bonus', explanation: '' }],
+        deductions: [{ point: 'deduction', explanation: '' }],
+      },
       perspectives: ['정확성'],
     })
     const context = createTestAppContext()
 
     const question = await generateQuestion(context, createTestJob(), { spec: { format: 'short-answer', category: 'term-definition', topic: 'kafka', difficulty: 'middle' } })
 
-    expect(question).toMatchObject({ requirements: [], recommendedLength: { min: 5, max: 150 }, perspectives: [] })
-    expect(question.rubric.bonus).toEqual([])
+    expect(question).toMatchObject({ requirements: [], recommendedLength: { min: 1, max: 150 }, perspectives: [] })
+    expect(question.rubric).toMatchObject({ required: [{ point: 'first' }], bonus: [], deductions: [] })
+  })
+
+  it('rejects a short answer question without a rubric item', async () => {
+    const spec: QuestionSpec = { format: 'short-answer', category: 'term-definition', topic: 'kafka', difficulty: 'middle' }
+    const content = questionContentFor(spec, 'No rubric')
+    runSkill.mockReset().mockResolvedValue({ ...content, rubric: { ...content.rubric, required: [] } })
+
+    await expect(generateQuestion(createTestAppContext(), createTestJob(), { spec })).rejects.toThrow('채점 기준')
   })
 
   it('gives concurrent generations without a topic different topics', async () => {

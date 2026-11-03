@@ -12,7 +12,7 @@
   "situation": "`@Transactional` 이 없는 `outer()` 가 같은 클래스의 `@Transactional` 메서드 `inner()` 를 호출합니다. 외부에서는 `outer()` 를 호출합니다. `inner()` 에 트랜잭션이 적용되나요? 이유도 함께 답하세요.",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

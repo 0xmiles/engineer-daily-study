@@ -12,7 +12,7 @@
   "situation": "복합 인덱스 `(a, b)` 가 있습니다. `WHERE b = 10` 처럼 `a` 조건 없이 조회할 때, 이 인덱스로 일반적인 범위 탐색을 하기 어려운 이유는 무엇인가요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

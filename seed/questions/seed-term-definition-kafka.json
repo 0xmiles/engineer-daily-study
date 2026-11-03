@@ -12,7 +12,7 @@
   "situation": "컨슈머 그룹에 컨슈머가 새로 들어오거나 빠질 때, 파티션 소유권을 그룹 구성원에게 다시 배분하는 과정을 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

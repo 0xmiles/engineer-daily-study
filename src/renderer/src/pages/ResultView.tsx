@@ -25,8 +25,14 @@ const RESULT_TABS: { value: ResultTab; label: string }[] = [
   { value: 'study', label: '추가 학습' },
 ]
 
-// Weaknesses and strengths stay empty for most short answers; the verdict comment in the header covers them.
-const SHORT_ANSWER_TABS = RESULT_TABS.filter((tab) => tab.value !== 'weaknesses' && tab.value !== 'strengths')
+// Most short answers leave these empty, but a factual error the grader corrected must stay visible.
+function resultTabsFor(question: Question, grading: ScoredGrading): typeof RESULT_TABS {
+  if (!isShortAnswer(question)) return RESULT_TABS
+  return RESULT_TABS.filter((tab) => {
+    if (tab.value === 'weaknesses') return grading.weaknesses.length > 0
+    return tab.value !== 'strengths' || grading.strengths.length > 0
+  })
+}
 
 function shortAnswerVerdict(totalScore: number): string {
   if (totalScore === 100) return '정답'
@@ -111,7 +117,7 @@ function TabContent({ tab, attempt, question }: { tab: ResultTab; attempt: Attem
 }
 
 export function ResultView({ attempt, question }: { attempt: Attempt; question: Question }) {
-  const tabs = isShortAnswer(question) ? SHORT_ANSWER_TABS : RESULT_TABS
+  const tabs = resultTabsFor(question, attempt.grading!)
   const [tab, setTab] = useState<ResultTab>(tabs[0].value)
   const [isRetrying, setIsRetrying] = useState(false)
   const navigate = useNavigate()

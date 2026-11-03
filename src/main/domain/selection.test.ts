@@ -44,6 +44,18 @@ describe('pickUnservedQuestion', () => {
   })
 })
 
+describe('topic rotation across formats', () => {
+  it('does not let a recently served short answer push back an essay topic', () => {
+    const questions = [
+      question('kafka-served', 'concept', 'why', 'kafka', { servedAt: '2026-10-01T00:00:00Z' }),
+      question('cache-short', 'short-answer', 'term-definition', 'cache', { servedAt: '2026-10-30T00:00:00Z' }),
+      question('kafka-new', 'concept', 'why', 'kafka'),
+      question('cache-new', 'concept', 'why', 'cache'),
+    ]
+    expect(pickUnservedQuestion(context(questions), { format: 'concept', difficulty: 'middle' })?.id).toBe('cache-new')
+  })
+})
+
 describe('planDailySet', () => {
   it('uses the weekday scenario category and a different topic for the concept question', () => {
     const questions = [

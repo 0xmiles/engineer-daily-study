@@ -12,7 +12,7 @@
   "situation": "복제 계수 3, `min.insync.replicas=2` 인 토픽에 프로듀서가 `acks=all` 로 씁니다. 브로커 2대가 내려가 ISR 에 리더 1개만 남았습니다. 이때 프로듀서의 쓰기는 어떻게 되나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

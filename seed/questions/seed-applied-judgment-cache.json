@@ -12,7 +12,7 @@
   "situation": "Redis 의 `maxmemory-policy` 가 `volatile-lru` 입니다. 애플리케이션은 모든 키를 만료 시간 없이 저장해 왔고, 메모리가 `maxmemory` 에 닿았습니다. 새 쓰기 요청은 어떻게 되나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

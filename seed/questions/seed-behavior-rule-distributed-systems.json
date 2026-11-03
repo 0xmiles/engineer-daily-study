@@ -12,7 +12,7 @@
   "situation": "분산 락의 만료 시간이 지난 뒤 긴 GC 에서 깨어난 이전 소유자가 저장소에 쓰기를 시도합니다. 저장소가 이 쓰기를 거부하려면, 락을 얻을 때마다 함께 발급하는 어떤 값을 비교해야 하나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

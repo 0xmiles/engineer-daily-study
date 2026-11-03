@@ -1,4 +1,4 @@
-import type { Attempt, DailyItem, DailySet, Difficulty, Question, QuestionSpec, Topic } from '@shared/types'
+import type { Attempt, DailyItem, DailySet, Difficulty, Question, QuestionFormat, QuestionSpec, Topic } from '@shared/types'
 import { DAILY_SHORT_ANSWER_COUNT } from '@shared/rules'
 import { categoriesOf, isShortAnswer, scenarioCategoryForWeekday } from '@shared/taxonomy'
 import { daysBetween, parseDateKey } from './dates'
@@ -20,19 +20,24 @@ export interface DailyPlanOptions {
   dailyCount: 2 | 3
 }
 
-/** Topics ordered from least recently practiced, so every topic gets regular turns. */
-export function topicsByLeastRecent(context: SelectionContext): Topic[] {
-  return topicsByOldestActivity(context, (question) => question.servedAt)
+/**
+ * Topics ordered from least recently practiced, so every topic gets regular turns.
+ * Short answers and essays rotate separately: three short answers a day would otherwise push essay topics back.
+ */
+export function topicsByLeastRecent(context: SelectionContext, format: QuestionFormat): Topic[] {
+  return topicsByOldestActivity(context, format, (question) => question.servedAt)
 }
 
 /** Like topicsByLeastRecent, but adding a question to the bank also counts as activity on its topic. */
-function topicsByLeastRecentlyServedOrAdded(context: SelectionContext): Topic[] {
-  return topicsByOldestActivity(context, (question) => question.servedAt ?? question.createdAt)
+function topicsByLeastRecentlyServedOrAdded(context: SelectionContext, format: QuestionFormat): Topic[] {
+  return topicsByOldestActivity(context, format, (question) => question.servedAt ?? question.createdAt)
 }
 
-function topicsByOldestActivity(context: SelectionContext, activityTime: (question: Question) => string | undefined): Topic[] {
+function topicsByOldestActivity(context: SelectionContext, format: QuestionFormat, activityTime: (question: Question) => string | undefined): Topic[] {
   const lastSeen = new Map<Topic, string>()
+  const seeksShortAnswer = isShortAnswer({ format })
   for (const question of context.questions) {
+    if (isShortAnswer(question) !== seeksShortAnswer) continue
     const time = activityTime(question)
     if (!time) continue
     const previous = lastSeen.get(question.topic)
@@ -64,7 +69,7 @@ export function pickUnservedQuestion(
   spec: QuestionSpec,
   excludedTopics: Topic[] = [],
 ): Question | null {
-  const topicOrder = topicsByLeastRecent(context)
+  const topicOrder = topicsByLeastRecent(context, spec.format)
   const rank = (question: Question): number[] => [
     context.poorlyRatedQuestionIds.has(question.id) ? 1 : 0,
     question.reviewStatus === 'reviewed' ? 0 : 1,
@@ -85,7 +90,7 @@ function compareRanks(left: number[], right: number[]): number {
 /** Fills a missing category or topic so the spec is concrete enough to generate a question. */
 export function completeSpec(context: SelectionContext, spec: QuestionSpec, excludedTopics: Topic[] = []): QuestionSpec {
   const exclusions = usableExclusions(context, excludedTopics)
-  return fillSpec(spec, topicsByLeastRecent(context).filter((candidate) => !exclusions.includes(candidate)))
+  return fillSpec(spec, topicsByLeastRecent(context, spec.format).filter((candidate) => !exclusions.includes(candidate)))
 }
 
 /**
@@ -93,7 +98,7 @@ export function completeSpec(context: SelectionContext, spec: QuestionSpec, excl
  * so back-to-back generations spread over topics instead of all taking the least practiced one.
  */
 export function completeGenerationSpec(context: SelectionContext, spec: QuestionSpec): QuestionSpec {
-  return fillSpec(spec, topicsByLeastRecentlyServedOrAdded(context))
+  return fillSpec(spec, topicsByLeastRecentlyServedOrAdded(context, spec.format))
 }
 
 function fillSpec(spec: QuestionSpec, topicOrder: Topic[]): QuestionSpec {

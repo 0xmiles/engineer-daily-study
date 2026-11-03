@@ -12,7 +12,7 @@
   "situation": "커넥션 풀 크기가 10입니다. 트랜잭션 안에서 `REQUIRES_NEW` 메서드를 호출하는 요청 10개가 동시에 들어오자 모든 요청이 멈췄고, 커넥션 획득 타임아웃이 발생합니다. 요청들이 멈춘 원인은 무엇인가요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

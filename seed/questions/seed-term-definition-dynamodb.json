@@ -12,7 +12,7 @@
   "situation": "테이블 전체 용량에는 여유가 있는데, 특정 파티션 키 값에 요청이 몰려 해당 파티션에서만 쓰로틀링이 일어나는 현상을 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

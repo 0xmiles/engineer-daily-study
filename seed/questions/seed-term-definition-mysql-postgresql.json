@@ -12,7 +12,7 @@
   "situation": "행의 여러 버전을 유지해서, 읽는 트랜잭션이 쓰는 트랜잭션을 기다리지 않고 자신의 스냅샷에 맞는 버전을 읽게 하는 동시성 제어 방식의 이름은 무엇인가요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

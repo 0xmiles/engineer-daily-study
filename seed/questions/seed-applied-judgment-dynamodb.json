@@ -12,7 +12,7 @@
   "situation": "재고 수량을 `UpdateItem` 으로 차감합니다. 동시 요청이 많아도 재고가 음수가 되면 안 되고, 별도의 분산 락은 쓰고 싶지 않습니다. DynamoDB 의 어떤 기능을 어떻게 쓰면 되나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

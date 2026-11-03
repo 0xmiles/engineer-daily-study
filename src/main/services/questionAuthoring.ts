@@ -60,7 +60,9 @@ function normalizeContent(content: QuestionContent, spec: ConcreteSpec, allowedM
 
 /** The solve screen and the score formula rely on this shape, so it does not depend on what the model returned. */
 function withShortAnswerShape(content: QuestionContent): QuestionContent {
-  return { ...content, requirements: [], recommendedLength: SHORT_ANSWER_LENGTH, rubric: { ...content.rubric, bonus: [] } }
+  if (content.rubric.required.length === 0) throw new Error('단답형 문제의 채점 기준이 비어 있습니다. 다시 시도하세요.')
+  const rubric = { ...content.rubric, required: content.rubric.required.slice(0, 1), bonus: [], deductions: [] }
+  return { ...content, requirements: [], recommendedLength: SHORT_ANSWER_LENGTH, rubric }
 }
 
 async function findDuplicateId(context: AppContext, job: JobContext, candidate: QuestionContent, questions: Question[]): Promise<string | null> {

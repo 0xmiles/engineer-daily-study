@@ -28,6 +28,15 @@ describe('computeTotalScore for a short answer', () => {
     expect(computeTotalScore(shortAnswer, verdict('missing'))).toBe(0)
   })
 
+  it('uses the first verdict when the grader split the answer into several items', () => {
+    const coverage = [{ point: 'a', status: 'full', comment: '' }, { point: 'b', status: 'missing', comment: '' }] as const
+    expect(computeTotalScore(shortAnswer, grading({ requiredCoverage: [...coverage] }))).toBe(100)
+  })
+
+  it('fails instead of scoring 0 when the grader returned no verdict', () => {
+    expect(() => computeTotalScore(shortAnswer, grading({ requiredCoverage: [] }))).toThrow()
+  })
+
   it('ignores deductions the grader reported', () => {
     expect(computeTotalScore(shortAnswer, { ...verdict('full'), deductionsApplied: ['d'] })).toBe(100)
   })

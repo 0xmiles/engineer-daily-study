@@ -12,7 +12,7 @@
   "situation": "같은 요청을 한 번 수행하든 여러 번 수행하든 시스템의 최종 상태가 같게 유지되는 성질을 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

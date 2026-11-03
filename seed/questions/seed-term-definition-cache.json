@@ -12,7 +12,7 @@
   "situation": "요청이 많은 캐시 키가 만료된 순간, 동시에 들어온 요청이 모두 캐시 미스를 겪고 DB 로 몰리는 현상을 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

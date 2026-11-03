@@ -65,7 +65,7 @@
 | `title` | 묻는 대상을 한 줄로 쓴다. 정답이 되는 용어를 쓰지 않는다. |
 | `situation` | 질문을 쓴다. 답이 하나로 좁혀지도록 조건을 구체적으로 주고, 필요하면 수치와 설정을 넣는다. |
 | `requirements` | 빈 배열로 둔다. |
-| `recommendedLength` | `min` 5, `max` 150 으로 고정한다. |
+| `recommendedLength` | `min` 1, `max` 150 으로 고정한다. |
 | `keyIssues` | 1~2개. |
 | `rubric.required` | 정확히 1개. `explanation` 에 정답, 인정하는 동의어와 대안, 부분 정답이 되는 경우를 적는다. |
 | `rubric.bonus` | 빈 배열로 둔다. |

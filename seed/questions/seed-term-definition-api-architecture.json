@@ -12,7 +12,7 @@
   "situation": "결제 API 의 클라이언트가 응답을 받지 못해 재시도해도 서버가 한 번만 처리하도록, 클라이언트가 요청마다 만들어 함께 보내는 고유한 값을 무엇이라고 부르나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [

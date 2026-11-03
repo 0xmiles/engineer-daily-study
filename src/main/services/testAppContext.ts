@@ -30,6 +30,6 @@ export function questionContentFor(payload: QuestionSpec, title: string): Questi
   return {
     format: payload.format, category: payload.category!, topic: payload.topic!, difficulty: payload.difficulty, title,
     situation: '', requirements: [], recommendedLength: { min: 0, max: 0 }, keyIssues: [],
-    rubric: { required: [], bonus: [], deductions: [], commonMistakes: [] }, perspectives: [], modelAnswer: '', relatedStudyTopics: [],
+    rubric: { required: payload.format === 'short-answer' ? [{ point: '정답', explanation: '' }] : [], bonus: [], deductions: [], commonMistakes: [] }, perspectives: [], modelAnswer: '', relatedStudyTopics: [],
   }
 }

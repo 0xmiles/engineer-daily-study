@@ -153,7 +153,7 @@
   "title": "파티션보다 컨슈머가 많은 그룹",
   "situation": "파티션이 4개인 토픽을 같은 컨슈머 그룹의 컨슈머 6개가 구독합니다. 파티션을 배정받지 못하는 컨슈머는 몇 개이고, 그 컨슈머들은 어떤 상태인가요?",
   "requirements": [],
-  "recommendedLength": { "min": 5, "max": 150 },
+  "recommendedLength": { "min": 1, "max": 150 },
   "keyIssues": ["그룹 내 파티션당 컨슈머 하나"],
   "rubric": {
     "required": [

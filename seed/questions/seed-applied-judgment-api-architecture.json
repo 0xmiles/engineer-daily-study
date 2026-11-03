@@ -12,7 +12,7 @@
   "situation": "구버전 앱이 계속 쓰는 공개 API 에서 숫자형 필드 `amount` 를 통화 정보가 있는 객체로 바꿔야 합니다. 구버전 앱을 깨지 않으면서 전환하려면 어떻게 하나요?",
   "requirements": [],
   "recommendedLength": {
-    "min": 5,
+    "min": 1,
     "max": 150
   },
   "keyIssues": [
