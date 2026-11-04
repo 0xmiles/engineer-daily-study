@@ -48,7 +48,7 @@ export function QuestionFeedbackForm({ questionId }: { questionId: string }) {
           </button>
         ))}
       </div>
-      <textarea className="input h-20 resize-none" placeholder="예: 코드 리뷰 문제의 코드가 너무 짧았습니다. 상황 설명에 트래픽 수치가 더 있으면 좋겠습니다." value={comment} onChange={(event) => setComment(event.target.value)} />
+      <textarea className="input h-20 resize-none" placeholder="예: 설계 리뷰 문제의 처리 흐름이 너무 짧았습니다. 상황 설명에 트래픽 수치가 더 있으면 좋겠습니다." value={comment} onChange={(event) => setComment(event.target.value)} />
       <Button variant="secondary" disabled={!rating} isLoading={isSaving} onClick={() => void send()}>피드백 남기기</Button>
     </div>
   )

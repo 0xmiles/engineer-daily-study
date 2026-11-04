@@ -21,7 +21,7 @@ const GUIDE = {
 
 /** A graded senior Kafka attempt that recommended "Kafka 리밸런싱". */
 function saveRecommendingAttempt(context: AppContext): void {
-  const content = questionContentFor({ format: 'scenario', category: 'code-review', topic: 'kafka', difficulty: 'senior' }, 'Kafka 컨슈머 지연')
+  const content = questionContentFor({ format: 'scenario', category: 'design-review', topic: 'kafka', difficulty: 'senior' }, 'Kafka 컨슈머 지연')
   const question = { ...content, id: 'q-1', source: 'seed', reviewStatus: 'reviewed', createdAt: '2026-10-01T00:00:00Z', variantOf: null } as Question
   const attempt = {
     id: 'a-1', questionId: 'q-1', origin: 'daily', date: '2026-10-01', answer: '답안', status: 'graded', createdAt: '2026-10-01T00:00:00Z',

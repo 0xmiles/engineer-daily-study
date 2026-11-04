@@ -27,7 +27,7 @@ function graderReturning(overrides: Partial<Record<string, () => unknown>> = {})
 function seedGradedAttempt(context: AppContext, changes: Partial<Attempt> = {}): Attempt {
   const repositories = context.repositories()
   const question: Question = {
-    ...questionContentFor({ format: 'scenario', category: 'code-review', topic: 'kafka', difficulty: 'middle' }, '중복 발행'),
+    ...questionContentFor({ format: 'scenario', category: 'design-review', topic: 'kafka', difficulty: 'middle' }, '중복 발행'),
     id: 'q-1', source: 'seed', reviewStatus: 'reviewed', createdAt: '2026-11-01T00:00:00Z', variantOf: null,
   }
   repositories.saveQuestion(question)

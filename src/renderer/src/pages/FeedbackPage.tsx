@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Feedback, FeedbackScope } from '@shared/types'
 import type { Topic } from '@shared/types'
-import { CATEGORIES, DIFFICULTIES, FEEDBACK_REASONS, FORMATS, categoryLabel, difficultyLabel, formatLabel } from '@shared/taxonomy'
+import { ACTIVE_CATEGORIES, DIFFICULTIES, FEEDBACK_REASONS, FORMATS, categoryLabel, difficultyLabel, formatLabel } from '@shared/taxonomy'
 import { api, errorMessage, formatDateTime } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useTopicOptions, useTopics } from '../state/topics'
@@ -47,10 +47,10 @@ function AuthoringFeedbackForm() {
   }
   return (
     <section className="card space-y-4 p-6">
-      <textarea className="input h-28" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="예: 시니어 문제는 조직·비용 제약을 더 넣어 주세요. 코드 리뷰 문제는 Kotlin 코드를 50줄 이상으로 주세요." />
+      <textarea className="input h-28" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="예: 시니어 문제는 조직·비용 제약을 더 넣어 주세요. 설계 리뷰 문제는 처리 단계를 더 잘게 나눠 주세요." />
       <div className="grid grid-cols-4 gap-3">
         <Select label="형식" value={scope.format ?? ''} options={FORMATS} allowEmpty="전체" onChange={(format) => setScope({ ...scope, format: format || undefined })} />
-        <Select label="유형" value={scope.category ?? ''} options={CATEGORIES} allowEmpty="전체" onChange={(category) => setScope({ ...scope, category: category || undefined })} />
+        <Select label="유형" value={scope.category ?? ''} options={ACTIVE_CATEGORIES} allowEmpty="전체" onChange={(category) => setScope({ ...scope, category: category || undefined })} />
         <Select label="주제" value={scope.topic ?? ''} options={topicOptions} allowEmpty="전체" onChange={(topic) => setScope({ ...scope, topic: topic || undefined })} />
         <Select label="난이도" value={scope.difficulty ?? ''} options={DIFFICULTIES} allowEmpty="전체" onChange={(difficulty) => setScope({ ...scope, difficulty: difficulty || undefined })} />
       </div>

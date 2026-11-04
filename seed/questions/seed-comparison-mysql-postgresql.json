@@ -9,7 +9,7 @@
   "topic": "mysql-postgresql",
   "difficulty": "junior",
   "title": "같은 인덱스를 타는데 조회 컬럼에 따라 달라지는 읽기 비용",
-  "situation": "MySQL 8.0 InnoDB에 다음 테이블과 인덱스가 있습니다.\n\n```sql\nCREATE TABLE orders (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\n  user_id BIGINT NOT NULL,\n  status VARCHAR(20) NOT NULL,\n  amount DECIMAL(12, 2) NOT NULL,\n  created_at DATETIME NOT NULL,\n  INDEX idx_user_created (user_id, created_at)\n);\n```\n\n두 쿼리는 모두 `idx_user_created` 를 사용합니다.\n\n```sql\n-- 쿼리 A\nSELECT id, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\n-- 쿼리 B\nSELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\n```\n\nInnoDB의 클러스터드 인덱스, 세컨더리 인덱스, 커버링 인덱스를 비교하고, PostgreSQL의 테이블 저장 구조와 어떻게 다른지 설명하세요.",
+  "situation": "MySQL 8.0 InnoDB에 다음 테이블과 인덱스가 있습니다.\n\n- 테이블 `orders` 의 열: `id`(BIGINT, 자동 증가 기본 키), `user_id`(BIGINT), `status`(VARCHAR(20)), `amount`(DECIMAL(12, 2)), `created_at`(DATETIME). 모든 열은 NOT NULL 입니다.\n- 보조 인덱스: `idx_user_created` 하나이며, `user_id` 와 `created_at` 순서의 복합 인덱스입니다.\n\n두 쿼리는 모두 `idx_user_created` 를 사용합니다.\n\n- 쿼리 A: 특정 회원(`user_id`)의 주문을 `created_at` 역순으로 20건 가져오면서, `id` 와 `created_at` 두 열만 읽습니다.\n- 쿼리 B: 조건, 정렬, 건수는 쿼리 A와 같고, 모든 열을 읽습니다.\n\nInnoDB의 클러스터드 인덱스, 세컨더리 인덱스, 커버링 인덱스를 비교하고, PostgreSQL의 테이블 저장 구조와 어떻게 다른지 설명하세요.",
   "requirements": [
     "InnoDB에서 클러스터드 인덱스와 세컨더리 인덱스가 각각 무엇을 저장하는지, 세컨더리 인덱스로 행 전체를 찾는 과정과 함께 설명하세요.",
     "쿼리 A와 B 중 인덱스만 읽고 끝나는 쿼리는 어느 것이며, 그 이유는 무엇인지 쓰세요.",

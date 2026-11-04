@@ -15,10 +15,15 @@ interface CategoryDefinition {
   label: string
   format: QuestionFormat
   perspectives: string[]
+  /** Set on a category no longer offered; new questions that would have used it use this one instead. */
+  retiredFor?: QuestionCategory
 }
 
 export const FORMATS = taxonomyJson.formats as { value: QuestionFormat; label: string }[]
+/** Includes retired categories, so questions and attempts saved under them still show their label. */
 export const CATEGORIES = taxonomyJson.categories as CategoryDefinition[]
+/** Categories new questions, filters for them and feedback scopes can use. */
+export const ACTIVE_CATEGORIES = CATEGORIES.filter((category) => !category.retiredFor)
 /** Built-in topics only; custom topics come from the data folder through listTopics. */
 export const TOPICS = taxonomyJson.topics as { value: BuiltInTopic; label: string }[]
 export const DIFFICULTIES = taxonomyJson.difficulties as { value: Difficulty; label: string }[]
@@ -45,7 +50,12 @@ export function isShortAnswer(question: { format: QuestionFormat }): boolean {
 }
 
 export function categoriesOf(format: QuestionFormat): CategoryDefinition[] {
-  return CATEGORIES.filter((category) => category.format === format)
+  return ACTIVE_CATEGORIES.filter((category) => category.format === format)
+}
+
+/** The category a new question should use in place of the given one, e.g. a variant of a retired-category question. */
+export function activeCategoryOf(category: QuestionCategory): QuestionCategory {
+  return CATEGORIES.find((entry) => entry.value === category)?.retiredFor ?? category
 }
 
 export function perspectivesOf(category: QuestionCategory): string[] {

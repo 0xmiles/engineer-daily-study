@@ -63,6 +63,24 @@ describe('generateQuestion', () => {
     await expect(generateQuestion(createTestAppContext(), createTestJob(), { spec })).rejects.toThrow('채점 기준')
   })
 
+  it('writes the question again when it comes back with a code block', async () => {
+    const spec: QuestionSpec = { ...conceptSpec, category: 'why', topic: 'kafka' }
+    const withCode = { ...questionContentFor(spec, 'With code'), situation: '```kotlin\nfun main() {}\n```' }
+    runSkill.mockReset().mockResolvedValueOnce(withCode).mockResolvedValueOnce(questionContentFor(spec, 'Prose only'))
+
+    const question = await generateQuestion(createTestAppContext(), createTestJob(), { spec })
+
+    expect(question.title).toBe('Prose only')
+    expect(runSkill.mock.calls[1][0].payload.rejectedForCode).toEqual(['With code'])
+  })
+
+  it('gives up with a code specific message when every round has a code block', async () => {
+    const spec: QuestionSpec = { ...conceptSpec, category: 'why', topic: 'kafka' }
+    runSkill.mockReset().mockResolvedValue({ ...questionContentFor(spec, 'With code'), requirements: ['```sql\nSELECT 1\n```'] })
+
+    await expect(generateQuestion(createTestAppContext(), createTestJob(), { spec })).rejects.toThrow('코드가 없는 문제')
+  })
+
   it('gives concurrent generations without a topic different topics', async () => {
     authorWithTitles(['First', 'Second'])
     const context = createTestAppContext()

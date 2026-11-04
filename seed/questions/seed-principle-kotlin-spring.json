@@ -8,12 +8,12 @@
   "category": "principle",
   "topic": "kotlin-spring",
   "difficulty": "junior",
-  "title": "@Transactional 을 붙였는데 기대와 다르게 동작한 세 코드",
-  "situation": "Kotlin/Spring Boot 3, Spring Data JPA 프로젝트입니다. 아래 세 코드에는 모두 `@Transactional` 이 붙어 있지만 개발자가 기대한 대로 동작하지 않았습니다.\n\n(가) 회원마다 쿠폰을 발급하고, 한 회원의 발급이 실패하면 그 회원의 변경만 모두 롤백되기를 기대했습니다.\n\n```kotlin\n@Service\nclass CouponService(private val couponRepository: CouponRepository) {\n    fun issueAll(memberIds: List<Long>) {\n        memberIds.forEach { issue(it) }\n    }\n\n    @Transactional\n    fun issue(memberId: Long) {\n        couponRepository.save(Coupon(memberId))\n        couponRepository.save(CouponHistory(memberId)) // 여기서 예외가 날 수 있음\n    }\n}\n```\n\n(나) `kotlin-spring` 컴파일러 플러그인을 적용하지 않은 모듈에 있는 코드입니다. 호출하자마자 `NullPointerException` 이 났습니다.\n\n```kotlin\n@Service\nopen class PointService(private val pointRepository: PointRepository) {\n    @Transactional\n    fun use(memberId: Long, amount: Long) {\n        pointRepository.decrease(memberId, amount)\n    }\n}\n```\n\n(다) 파일에 잘못된 행이 있으면 저장한 주문이 모두 롤백되기를 기대했지만, 예외가 난 뒤에도 주문이 DB에 남았습니다.\n\n```kotlin\n@Transactional\nfun importOrders(file: Path) {\n    orderRepository.saveAll(parse(file))\n    if (hasInvalidRow(file)) throw java.io.IOException(\"잘못된 행이 있습니다\")\n}\n```",
+  "title": "@Transactional 을 붙였는데 기대와 다르게 동작한 세 메서드",
+  "situation": "Kotlin/Spring Boot 3, Spring Data JPA 프로젝트입니다. 아래 세 메서드에는 모두 `@Transactional` 이 붙어 있지만 개발자가 기대한 대로 동작하지 않았습니다.\n\n(가) 회원마다 쿠폰을 발급하고, 한 회원의 발급이 실패하면 그 회원의 변경만 모두 롤백되기를 기대했습니다.\n\n- `CouponService` 의 `issueAll` 에는 트랜잭션이 없고, 회원 ID 목록을 돌며 같은 클래스의 `issue` 를 직접 호출합니다.\n- `issue` 에는 `@Transactional` 이 붙어 있습니다. 쿠폰을 저장한 뒤 쿠폰 이력을 저장하며, 이력을 저장할 때 예외가 날 수 있습니다.\n\n(나) `kotlin-spring` 컴파일러 플러그인을 적용하지 않은 모듈에 있는 클래스입니다. 호출하자마자 `NullPointerException` 이 났습니다.\n\n- `PointService` 클래스에는 `open` 을 붙였고, `@Transactional` 이 붙은 `use` 메서드에는 `open` 을 붙이지 않았습니다.\n- `use` 는 생성자로 주입받은 `pointRepository` 의 포인트 차감 메서드를 호출합니다.\n\n(다) 파일에 잘못된 행이 있으면 저장한 주문이 모두 롤백되기를 기대했지만, 예외가 난 뒤에도 주문이 DB에 남았습니다.\n\n- `@Transactional` 이 붙은 `importOrders` 는 파일을 파싱한 주문을 모두 저장합니다.\n- 저장한 뒤 파일에 잘못된 행이 있으면 `java.io.IOException` 을 던집니다.",
   "requirements": [
     "Spring이 `@Transactional` 을 메서드에 적용하는 구조를 설명하세요.",
     "(가), (나), (다)가 각각 왜 기대와 다르게 동작했는지 설명하세요.",
-    "각 코드를 기대대로 동작하게 고치는 방법을 쓰세요."
+    "각 메서드를 기대대로 동작하게 고치는 방법을 쓰세요."
   ],
   "recommendedLength": {
     "min": 300,

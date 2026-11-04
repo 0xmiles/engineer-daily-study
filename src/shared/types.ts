@@ -5,8 +5,10 @@ export type ScenarioCategory =
   | 'consistency-concurrency'
   | 'performance-scaling'
   | 'migration-legacy'
-  | 'code-review'
+  | 'design-review'
   | 'observability-operations'
+  /** Retired: questions may no longer contain code. Kept so questions and attempts saved before keep their label. */
+  | 'code-review'
 export type ConceptCategory = 'principle' | 'why' | 'comparison' | 'cross-layer' | 'architecture-principle'
 export type ShortAnswerCategory = 'term-definition' | 'behavior-rule' | 'applied-judgment'
 export type QuestionCategory = ScenarioCategory | ConceptCategory | ShortAnswerCategory

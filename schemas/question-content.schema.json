@@ -27,7 +27,7 @@
         "consistency-concurrency",
         "performance-scaling",
         "migration-legacy",
-        "code-review",
+        "design-review",
         "observability-operations",
         "principle",
         "why",

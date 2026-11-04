@@ -74,7 +74,7 @@ describe('planDailySet', () => {
   })
 
   it('adds a due postponed question on top of the usual items', () => {
-    const postponedQuestion = question('postponed', 'scenario', 'code-review', 'kafka', { servedAt: '2026-10-28T00:00:00Z' })
+    const postponedQuestion = question('postponed', 'scenario', 'design-review', 'kafka', { servedAt: '2026-10-28T00:00:00Z' })
     const plan = planDailySet(context([postponedQuestion], [postponedAttempt('a-old', 'postponed', MONDAY)]), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
     expect(plan.items[2]).toMatchObject({ kind: 'retry', questionId: 'postponed', retryOfAttemptId: 'a-old' })
   })
@@ -116,6 +116,12 @@ describe('planDailySet short answer items', () => {
     expect(shortAnswerItems(plan)).toHaveLength(3)
     expect(shortAnswerItems(plan)[0]).toMatchObject({ questionId: null, spec: { format: 'short-answer', difficulty: 'junior' } })
     expect(['term-definition', 'behavior-rule', 'applied-judgment']).toContain(shortAnswerItems(plan)[0].spec.category)
+  })
+
+  it('asks for a variant in the replacing category when the weak question used a retired one', () => {
+    const codeReview = question('q', 'scenario', 'code-review', 'kafka', { servedAt: '2026-10-01T00:00:00Z' })
+    const plan = planDailySet(context([codeReview], [gradedAttempt('2026-10-01', 30)]), { date: MONDAY, difficulty: 'middle', dailyCount: 2 })
+    expect(plan.items.find((item) => item.kind === 'weakness')?.spec.category).toBe('design-review')
   })
 
   it('does not bring a low scored short answer back as a weakness review', () => {

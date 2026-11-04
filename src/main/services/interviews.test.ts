@@ -63,7 +63,7 @@ describe('timed interview', () => {
   it('starts at once with bank questions, marks them served and grades a blank answer as zero without the model', async () => {
     fakeSkills()
     const context = createTestAppContext()
-    context.repositories().saveQuestion(bankQuestion('scenario', 'scenario', 'code-review', 'kafka'))
+    context.repositories().saveQuestion(bankQuestion('scenario', 'scenario', 'design-review', 'kafka'))
     context.repositories().saveQuestion(bankQuestion('concept', 'concept', 'why', 'cache'))
 
     const id = startTimedInterview(context, TIMED_OPTIONS)
@@ -104,7 +104,7 @@ describe('timed interview', () => {
   it('keeps submitted items when abandoned and returns the unanswered questions to the bank', () => {
     fakeSkills()
     const context = createTestAppContext()
-    context.repositories().saveQuestion(bankQuestion('scenario', 'scenario', 'code-review', 'kafka'))
+    context.repositories().saveQuestion(bankQuestion('scenario', 'scenario', 'design-review', 'kafka'))
     context.repositories().saveQuestion(bankQuestion('concept', 'concept', 'why', 'cache'))
     const id = startTimedInterview(context, TIMED_OPTIONS)
     beginTimedItem(context, id)

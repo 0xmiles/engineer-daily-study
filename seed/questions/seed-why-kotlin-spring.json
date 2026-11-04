@@ -9,10 +9,10 @@
   "topic": "kotlin-spring",
   "difficulty": "middle",
   "title": "save 호출 없이 UPDATE 가 나가는 구조는 왜 만들어졌는가",
-  "situation": "아래 코드는 `save()` 를 호출하지 않는데도 트랜잭션이 끝날 때 `orders` 테이블에 UPDATE 문이 실행됩니다.\n\n```kotlin\n@Transactional\nfun changeAddress(orderId: Long, address: Address) {\n    val order = orderRepository.findById(orderId).orElseThrow()\n    order.changeAddress(address)\n}\n```\n\nJPA는 엔티티를 바로 DB에 반영하지 않고 영속성 컨텍스트라는 중간 계층에서 관리합니다. 또한 Spring Boot는 `spring.jpa.open-in-view` 를 따로 설정하지 않으면 Open Session In View를 켠 상태로 시작하고, 시작할 때 이를 알리는 경고 로그를 남깁니다.",
+  "situation": "아래 메서드는 `save()` 를 호출하지 않는데도 트랜잭션이 끝날 때 `orders` 테이블에 UPDATE 문이 실행됩니다.\n\n배송지 변경 서비스 메서드는 `@Transactional` 이 붙어 있고, 다음 두 가지만 합니다.\n\n1. 주문 저장소에서 주문 ID 로 주문 엔티티를 조회합니다. 없으면 예외를 던집니다.\n2. 조회한 주문 엔티티의 배송지 변경 메서드를 호출해 배송지 필드를 바꿉니다.\n\n저장소의 `save()` 는 어디에서도 호출하지 않습니다.\n\nJPA는 엔티티를 바로 DB에 반영하지 않고 영속성 컨텍스트라는 중간 계층에서 관리합니다. 또한 Spring Boot는 `spring.jpa.open-in-view` 를 따로 설정하지 않으면 Open Session In View를 켠 상태로 시작하고, 시작할 때 이를 알리는 경고 로그를 남깁니다.",
   "requirements": [
     "JPA가 엔티티를 영속성 컨텍스트에서 관리하도록 설계된 이유를 설명하세요.",
-    "위 코드에서 `save()` 없이 UPDATE 가 실행되는 과정과, 이 방식이 대량 처리에서 드러내는 비용을 설명하세요.",
+    "위 메서드에서 `save()` 없이 UPDATE 가 실행되는 과정과, 이 방식이 대량 처리에서 드러내는 비용을 설명하세요.",
     "Open Session In View가 켜져 있을 때 운영 환경에 주는 영향과, 끌 때 달라지는 점을 설명하세요."
   ],
   "recommendedLength": {

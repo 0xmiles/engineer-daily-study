@@ -10,7 +10,7 @@
     { "value": "consistency-concurrency", "label": "데이터 정합성과 동시성", "format": "scenario", "perspectives": ["실패 시나리오의 정확성", "보장 수준 명시", "방어책의 구체성", "데이터 보정"] },
     { "value": "performance-scaling", "label": "성능과 확장", "format": "scenario", "perspectives": ["측정 근거", "용량 추정", "단계별 대응", "비용 고려"] },
     { "value": "migration-legacy", "label": "마이그레이션과 레거시 개선", "format": "scenario", "perspectives": ["단계 분할", "롤백 가능성", "공존 기간의 호환성", "전환 검증"] },
-    { "value": "code-review", "label": "코드 리뷰", "format": "scenario", "perspectives": ["결함 발견", "심각도 판단", "수정안의 구체성", "발생 상황 설명"] },
+    { "value": "design-review", "label": "설계 리뷰", "format": "scenario", "perspectives": ["결함 발견", "심각도 판단", "수정안의 구체성", "발생 상황 설명"] },
     { "value": "observability-operations", "label": "관측성과 운영", "format": "scenario", "perspectives": ["사용자 영향 기준 지표", "알람의 실행 가능성", "잡음 감소", "대응 절차"] },
     { "value": "principle", "label": "원리 설명", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
     { "value": "why", "label": "\"왜\" 질문", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
@@ -19,7 +19,8 @@
     { "value": "architecture-principle", "label": "아키텍처 원칙", "format": "concept", "perspectives": ["정확성", "깊이", "연결", "실무 적용"] },
     { "value": "term-definition", "label": "용어와 정의", "format": "short-answer", "perspectives": [] },
     { "value": "behavior-rule", "label": "동작 규칙", "format": "short-answer", "perspectives": [] },
-    { "value": "applied-judgment", "label": "상황 적용", "format": "short-answer", "perspectives": [] }
+    { "value": "applied-judgment", "label": "상황 적용", "format": "short-answer", "perspectives": [] },
+    { "value": "code-review", "label": "코드 리뷰", "format": "scenario", "perspectives": ["결함 발견", "심각도 판단", "수정안의 구체성", "발생 상황 설명"], "retiredFor": "design-review" }
   ],
   "topics": [
     { "value": "kotlin-spring", "label": "Kotlin/Spring" },
@@ -41,7 +42,7 @@
     "3": "consistency-concurrency",
     "4": "performance-scaling",
     "5": "migration-legacy",
-    "6": "code-review",
+    "6": "design-review",
     "0": "observability-operations"
   }
 }

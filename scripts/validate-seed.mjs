@@ -40,7 +40,9 @@ function findTaxonomyErrors(question) {
   if (!category) return [...errors, `unknown category ${question.category}`]
   if (category.format !== question.format) errors.push(`category ${question.category} does not belong to format ${question.format}`)
   if (JSON.stringify(category.perspectives) !== JSON.stringify(question.perspectives)) errors.push('perspectives differ from taxonomy.json')
-  if (question.format === 'scenario' && question.category === 'code-review' && !question.situation.includes('```')) errors.push('code-review question has no code block')
+  if (category.retiredFor) errors.push(`category ${question.category} is retired; use ${category.retiredFor}`)
+  // Mirrors hasCodeBlock in src/main/services/questionAuthoring.ts.
+  if ([question.title, question.situation, ...question.requirements].some((text) => text.includes('```'))) errors.push('question text must not contain a code block')
   return errors
 }
 

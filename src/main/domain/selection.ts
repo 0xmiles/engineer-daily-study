@@ -1,6 +1,6 @@
 import type { Attempt, DailyItem, DailySet, Difficulty, Question, QuestionFormat, QuestionSpec, Topic } from '@shared/types'
 import { DAILY_SHORT_ANSWER_COUNT } from '@shared/rules'
-import { categoriesOf, isShortAnswer, scenarioCategoryForWeekday } from '@shared/taxonomy'
+import { activeCategoryOf, categoriesOf, isShortAnswer, scenarioCategoryForWeekday } from '@shared/taxonomy'
 import { daysBetween, parseDateKey } from './dates'
 
 const WEAKNESS_SCORE_THRESHOLD = 60
@@ -138,10 +138,12 @@ function specOf(question: Question): QuestionSpec {
   return { format: question.format, category: question.category, topic: question.topic, difficulty: question.difficulty }
 }
 
+/** The variant is a new question, so a retired category is replaced by the one that took its place. */
 function weaknessItem(context: SelectionContext, attempt: Attempt): DailyItem | null {
   const baseQuestion = context.questions.find((question) => question.id === attempt.questionId)
   if (!baseQuestion) return null
-  return { kind: 'weakness', questionId: null, spec: specOf(baseQuestion), variantOfAttemptId: attempt.id, attemptId: null, generationError: null }
+  const spec = { ...specOf(baseQuestion), category: activeCategoryOf(baseQuestion.category) }
+  return { kind: 'weakness', questionId: null, spec, variantOfAttemptId: attempt.id, attemptId: null, generationError: null }
 }
 
 function retryItem(context: SelectionContext, attempt: Attempt): DailyItem | null {

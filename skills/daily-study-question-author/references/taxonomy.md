@@ -21,7 +21,7 @@
 | `consistency-concurrency` | 데이터 정합성과 동시성 | 경쟁 조건, 멱등성, 분산 트랜잭션, 이중 쓰기를 다루는 능력 |
 | `performance-scaling` | 성능과 확장 | 병목을 찾고, 용량을 추정하고, 단계별로 확장하는 능력 |
 | `migration-legacy` | 마이그레이션과 레거시 개선 | 서비스를 멈추지 않고 전환하고, 롤백 전략을 세우는 능력 |
-| `code-review` | 코드 리뷰 | 코드에 숨은 결함과 운영 위험을 읽어 내는 능력. 반드시 `situation` 에 코드 블록을 넣는다. |
+| `design-review` | 설계 리뷰 | 글로 쓴 변경안이나 처리 흐름(단계, 트랜잭션 경계, 설정값)에서 숨은 결함과 운영 위험을 읽어 내는 능력. 코드는 넣지 않는다. |
 | `observability-operations` | 관측성과 운영 | 지표·알람·SLO를 설계하고 장애 대응 체계를 만드는 능력 |
 
 ### 개념 유형
@@ -62,5 +62,6 @@ Redis, SQS, Elasticsearch 같은 주변 기술은 위 주제의 상황 안에서
 
 - `customTopic.label` 은 주제 이름, `customTopic.description` 은 사용자가 적은 출제 범위다.
 - 위 표 대신 `description` 의 범위 안에서 시나리오 상황과 개념 원리를 고른다. 범위를 벗어난 쟁점을 주로 묻지 않는다.
+- `description` 에 "코드를 보고 동작이나 결함을 짚는다" 같은 말이 있어도 코드는 넣지 않는다. 그 코드가 하는 일을 처리 순서와 조건으로 글로 설명하고 동작이나 결함을 묻는다.
 - 결과의 `topic` 에는 요청의 `topic` 값을 그대로 쓴다.
 - `customTopic` 이 `null` 이면 위 표의 기본 주제다.

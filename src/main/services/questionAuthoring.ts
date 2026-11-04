@@ -78,6 +78,11 @@ async function findDuplicateId(context: AppContext, job: JobContext, candidate: 
   return verdict.isDuplicate ? verdict.duplicateOfId || similarQuestions[0].id : null
 }
 
+/** Questions are read as prose, often on a narrow screen; mirrored in scripts/validate-seed.mjs. */
+function hasCodeBlock(content: Pick<QuestionContent, 'title' | 'situation' | 'requirements'>): boolean {
+  return [content.title, content.situation, ...content.requirements].some((text) => text.includes('```'))
+}
+
 function toQuestion(content: QuestionContent, source: QuestionSource, variantOf: string | null): Question {
   return { ...content, id: newId('q'), source, reviewStatus: 'unreviewed', createdAt: new Date().toISOString(), variantOf }
 }
@@ -96,6 +101,7 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
   const repositories = context.repositories()
   const questions = repositories.questions.readAll()
   const rejectedTitles: string[] = []
+  const rejectedForCode: string[] = []
   const allowedModelTopics = variant ? buildSelectionContext(repositories).topics : []
   for (let round = 1; round <= MAX_GENERATION_ROUNDS; round++) {
     const payload = {
@@ -106,10 +112,15 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
       weakPoints: variant?.weakPoints ?? [],
       existingQuestions: existingSummaries(questions, spec),
       rejectedAsDuplicate: rejectedTitles,
+      rejectedForCode,
       userFeedback: selectAuthoringGuidelines(repositories.feedback.readAll(), questions, spec),
     }
-    job.setStage(round === 1 ? '문제를 만드는 중' : `중복을 피해 다시 만드는 중 (${round}/${MAX_GENERATION_ROUNDS})`)
+    job.setStage(round === 1 ? '문제를 만드는 중' : `규칙에 맞게 다시 만드는 중 (${round}/${MAX_GENERATION_ROUNDS})`)
     const content = normalizeContent(await runQuestionAuthor<QuestionContent>(context, job, 'question-content', payload), spec, allowedModelTopics)
+    if (hasCodeBlock(content)) {
+      rejectedForCode.push(content.title)
+      continue
+    }
     if (!(await findDuplicateId(context, job, content, questions))) {
       const question = toQuestion(content, variant ? 'variant' : 'generated', variant?.baseQuestion.id ?? null)
       repositories.saveQuestion(question)
@@ -117,6 +128,7 @@ async function authorUniqueQuestion(context: AppContext, job: JobContext, spec: 
     }
     rejectedTitles.push(content.title)
   }
+  if (rejectedForCode.length === MAX_GENERATION_ROUNDS) throw new Error('코드가 없는 문제를 만들지 못했습니다. 다시 시도하세요.')
   throw new Error('기존 문제와 겹치지 않는 문제를 만들지 못했습니다. 조건을 바꿔 다시 시도하세요.')
 }
 

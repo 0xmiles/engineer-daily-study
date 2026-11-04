@@ -28,7 +28,7 @@ function graderAnswering() {
 }
 
 function saveQuestion(context: AppContext): Question {
-  const content = questionContentFor({ format: 'scenario', category: 'code-review', topic: 'kafka', difficulty: 'middle' }, 'Question')
+  const content = questionContentFor({ format: 'scenario', category: 'design-review', topic: 'kafka', difficulty: 'middle' }, 'Question')
   const question: Question = {
     ...content,
     rubric: { ...content.rubric, required: [{ point: 'a', explanation: '' }] },
