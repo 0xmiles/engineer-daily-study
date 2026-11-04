@@ -1,7 +1,7 @@
 import type { Attempt, AttemptOrigin, DailyItem, DailySet, Question } from '@shared/types'
 import type { TodayView } from '@shared/api'
 import { addDays, localDateKey } from '../domain/dates'
-import { planDailySet } from '../domain/selection'
+import { planDailySet, plannedShortAnswerItems } from '../domain/selection'
 import { errorDetailOf, errorMessageOf, type JobContext } from '../jobs/jobManager'
 import { CancelledError } from '../llm/skillRunner'
 import { newId, type Repositories } from '../store/repositories'
@@ -31,15 +31,27 @@ function requireDailySet(repositories: Repositories, date: string): DailySet {
   return dailySet
 }
 
+function saveNewDailySet(repositories: Repositories, dailySet: DailySet, newItems: DailyItem[]): DailySet {
+  for (const item of newItems) if (item.questionId) markServed(repositories, item.questionId)
+  repositories.saveDailySet(dailySet)
+  return dailySet
+}
+
+/** A set planned before short answer questions existed gets them added once; its other items stay as they were. */
+function withShortAnswerItems(context: AppContext, dailySet: DailySet): DailySet {
+  if (dailySet.items.some((item) => item.kind === 'short-answer')) return dailySet
+  const repositories = context.repositories()
+  const shortAnswerItems = plannedShortAnswerItems(buildSelectionContext(repositories), context.settings().difficulty)
+  return saveNewDailySet(repositories, { ...dailySet, items: [...dailySet.items, ...shortAnswerItems] }, shortAnswerItems)
+}
+
 /** Plans the day's set once; later calls return the stored set so the day's questions never change. */
 export function ensureDailySet(context: AppContext, date: string): DailySet {
   const repositories = context.repositories()
   const existing = repositories.dailySets.read(date)
-  if (existing) return existing
+  if (existing) return withShortAnswerItems(context, existing)
   const dailySet = planDailySetFor(context, date)
-  for (const item of dailySet.items) if (item.questionId) markServed(repositories, item.questionId)
-  repositories.saveDailySet(dailySet)
-  return dailySet
+  return saveNewDailySet(repositories, dailySet, dailySet.items)
 }
 
 export function getTodayView(context: AppContext): TodayView {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Job, QuestionSpec } from '@shared/types'
 import type { AppContext } from './appContext'
-import { prepareDaily, retryDailyItem, todayKey } from './daily'
+import { ensureDailySet, prepareDaily, retryDailyItem, todayKey } from './daily'
 import { createTestAppContext, questionContentFor, removeTestDataDirectories } from './testAppContext'
 
 const { runSkill } = vi.hoisted(() => ({ runSkill: vi.fn() }))
@@ -74,5 +74,26 @@ describe('prepareDaily', () => {
     expect(todayItems(context)[0]).toMatchObject({ generationError: null })
     expect(todayItems(context)[0].questionId).not.toBeNull()
     expect(context.jobs.list().filter((listed) => listed.kind === 'prepare-daily')).toHaveLength(1)
+  })
+})
+
+describe('ensureDailySet', () => {
+  it('adds short answer items to a set planned before short answers existed, keeping its other items', () => {
+    const context = createTestAppContext()
+    const essayItem = { kind: 'scenario', questionId: null, spec: { format: 'scenario', category: 'incident-diagnosis', topic: 'kafka', difficulty: 'middle' }, variantOfAttemptId: null, attemptId: null, generationError: null } as const
+    context.repositories().saveDailySet({ date: todayKey(), items: [essayItem] })
+
+    const items = ensureDailySet(context, todayKey()).items
+
+    expect(items[0]).toEqual(essayItem)
+    expect(items.slice(1).map((item) => item.kind)).toEqual(['short-answer', 'short-answer', 'short-answer'])
+    expect(todayItems(context)).toHaveLength(4)
+  })
+
+  it('leaves a set that already has short answer items unchanged', () => {
+    const context = createTestAppContext()
+    const first = ensureDailySet(context, todayKey())
+
+    expect(ensureDailySet(context, todayKey())).toEqual(first)
   })
 })

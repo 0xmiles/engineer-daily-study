@@ -36,6 +36,22 @@ describe('pickUnservedQuestion', () => {
     expect(pickUnservedQuestion(context([poor, fine], [], ['poor']), { format: 'concept', difficulty: 'middle' })?.id).toBe('fine')
   })
 
+  it('gives a topic with only unreviewed questions its turn before a recently served topic', () => {
+    const questions = [
+      question('kafka-served', 'concept', 'why', 'kafka', { servedAt: '2026-10-01T00:00:00Z' }),
+      question('kafka-reviewed', 'concept', 'why', 'kafka'),
+      question('redis-unreviewed', 'concept', 'why', 'custom-redis', { reviewStatus: 'unreviewed' }),
+    ]
+    const picked = pickUnservedQuestion(context(questions, [], [], ['kafka', 'custom-redis']), { format: 'concept', difficulty: 'middle' })
+    expect(picked?.id).toBe('redis-unreviewed')
+  })
+
+  it('prefers reviewed questions within the same topic', () => {
+    const unreviewed = question('unreviewed', 'concept', 'why', 'kafka', { reviewStatus: 'unreviewed' })
+    const reviewed = question('reviewed', 'concept', 'why', 'kafka')
+    expect(pickUnservedQuestion(context([unreviewed, reviewed]), { format: 'concept', difficulty: 'middle' })?.id).toBe('reviewed')
+  })
+
   it('skips disabled topics unless the spec names the topic', () => {
     const kafka = question('kafka', 'concept', 'why', 'kafka')
     const withoutKafka = context([kafka], [], [], ['cache'])

@@ -61,7 +61,8 @@ function matchesSpec(question: Question, spec: QuestionSpec): boolean {
 }
 
 /**
- * Unserved question that fits the spec; reviewed and well-rated questions first, then least recent topic.
+ * Unserved question that fits the spec: well-rated questions first, then the least recent topic, then reviewed ones.
+ * Topic comes before review status so topics whose questions are all unreviewed (custom topics) still get their turns.
  * Without a topic in the spec only enabled topics qualify; a topic the user named explicitly always does.
  */
 export function pickUnservedQuestion(
@@ -72,8 +73,8 @@ export function pickUnservedQuestion(
   const topicOrder = topicsByLeastRecent(context, spec.format)
   const rank = (question: Question): number[] => [
     context.poorlyRatedQuestionIds.has(question.id) ? 1 : 0,
-    question.reviewStatus === 'reviewed' ? 0 : 1,
     topicOrder.indexOf(question.topic),
+    question.reviewStatus === 'reviewed' ? 0 : 1,
   ]
   const isAllowedTopic = (topic: Topic): boolean => (spec.topic ? true : context.topics.includes(topic)) && !excludedTopics.includes(topic)
   const candidates = context.questions
@@ -165,7 +166,7 @@ function attemptsEligibleForWeaknessReview(context: SelectionContext): Attempt[]
 }
 
 /** Topic exclusions reset when topics run out, so picked questions leave the candidates to keep one from repeating. */
-function plannedShortAnswerItems(context: SelectionContext, difficulty: Difficulty): DailyItem[] {
+export function plannedShortAnswerItems(context: SelectionContext, difficulty: Difficulty): DailyItem[] {
   const items: DailyItem[] = []
   let remainingContext = context
   for (let count = 0; count < DAILY_SHORT_ANSWER_COUNT; count++) {
