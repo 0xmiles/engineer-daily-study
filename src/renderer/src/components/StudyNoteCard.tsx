@@ -17,6 +17,7 @@ export function StudyNoteCard({ note }: { note: StudyNote }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-1.5">
             {latestSource && <Badge className="bg-accent-soft text-accent-ink">추천 {note.sources.length}회</Badge>}
+            {note.addedAt && <Badge className="bg-info-soft text-info">직접 추가</Badge>}
             {note.questions.length > 0 && <Badge>문제 {note.questions.length}개</Badge>}
             {note.isReopened && <Badge className="bg-warn-soft text-warn">다시 추천됨</Badge>}
             {note.hasGuide && <Badge className="bg-good-soft text-good">노트 있음</Badge>}

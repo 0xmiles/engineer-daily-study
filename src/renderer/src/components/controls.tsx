@@ -99,3 +99,12 @@ export function Select<T extends string>({ label, value, options, onChange, allo
     </label>
   )
 }
+
+/** A pill that turns one value of a multi-select on and off. */
+export function ToggleChip({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) {
+  return (
+    <button type="button" aria-pressed={isActive} onClick={onClick} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${isActive ? 'border-accent bg-accent text-accent-on' : 'border-line-strong text-ink-muted hover:text-ink'}`}>
+      {label}
+    </button>
+  )
+}

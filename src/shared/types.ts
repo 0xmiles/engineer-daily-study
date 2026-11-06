@@ -283,6 +283,13 @@ export interface Job {
 }
 
 /** The user's own part of a study note; keywords and reasons are gathered from grading results each time. */
+/** A keyword the user added by hand, so the note exists even when no grading, interview or bank question names it. */
+export interface ManualStudyNote {
+  keyword: string
+  topics: Topic[]
+  addedAt: string
+}
+
 export interface StudyNoteState {
   key: string
   memo: string
@@ -290,6 +297,8 @@ export interface StudyNoteState {
   updatedAt: string
   /** Absent until the tutor writes one; regenerating replaces it. */
   guide?: StudyGuide
+  /** Present when the user added the keyword themselves. */
+  manual?: ManualStudyNote
 }
 
 export interface StudyGuideSection {

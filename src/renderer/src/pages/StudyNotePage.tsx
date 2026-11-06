@@ -7,7 +7,7 @@ import { useJobs } from '../state/jobs'
 import { useNavigate } from '../state/navigation'
 import { useRequest } from '../state/useRequest'
 import { useTopics } from '../state/topics'
-import { Button } from '../components/controls'
+import { Button, ConfirmDialog } from '../components/controls'
 import { EmptyState, ErrorPanel, SkeletonList, Spinner } from '../components/feedback'
 import { formatDuration, useNow } from '../components/InterviewShared'
 import { Markdown } from '../components/Markdown'
@@ -141,6 +141,7 @@ function GuideArea({ note }: { note: StudyNoteDetail }) {
 
 function noteDescription(note: StudyNoteDetail): string {
   const parts = [
+    note.addedAt && `직접 추가 · ${formatDateTime(note.addedAt)}`,
     note.lastRecommendedAt && `추천 ${note.sources.length}회 · 마지막 추천 ${formatDateTime(note.lastRecommendedAt)}`,
     note.questions.length > 0 && `문제 ${note.questions.length}개에 필요한 개념`,
   ]
@@ -155,6 +156,35 @@ function NeededByQuestions({ questions }: { questions: StudyNoteQuestion[] }) {
         {questions.map((question) => <li key={question.id}><QuestionLink question={question} /></li>)}
       </ul>
     </section>
+  )
+}
+
+/** Only a note the user added and nothing else names can go; any other note would come back from its grading or question. */
+function DeleteAddedNote({ note }: { note: StudyNoteDetail }) {
+  const navigate = useNavigate()
+  const request = useRequest()
+  const [isConfirming, setIsConfirming] = useState(false)
+  if (note.addedAt === null || note.sources.length > 0 || note.questions.length > 0) return null
+
+  const remove = async (): Promise<void> => {
+    setIsConfirming(false)
+    const isDeleted = await request.run(() => api.deleteStudyNote(note.key).then(() => true), '노트를 삭제하지 못했습니다')
+    if (isDeleted) navigate({ name: 'notes' })
+  }
+
+  return (
+    <>
+      <Button variant="ghost" isLoading={request.isRunning} onClick={() => setIsConfirming(true)}>노트 삭제</Button>
+      <ConfirmDialog
+        isOpen={isConfirming}
+        title="이 노트를 삭제할까요?"
+        description="정리된 내용과 메모도 함께 지워지고, 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        tone="danger"
+        onConfirm={() => void remove()}
+        onCancel={() => setIsConfirming(false)}
+      />
+    </>
   )
 }
 
@@ -184,9 +214,13 @@ function NoteContent({ note }: { note: StudyNoteDetail }) {
         <p className="mb-3 font-semibold">내 메모</p>
         <MemoField note={note} />
       </section>
-      <section className="mt-6">
-        <p className="mb-2 text-xs font-semibold text-ink-muted">더 찾아보기</p>
-        <SearchLinks queries={note.sources.map((source) => source.searchQuery)} />
+      <section className="mt-6 flex items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 text-xs font-semibold text-ink-muted">더 찾아보기</p>
+          {/* Without a grader's search query, the keyword itself is the search. */}
+          <SearchLinks queries={note.sources.length > 0 ? note.sources.map((source) => source.searchQuery) : [note.keyword]} />
+        </div>
+        <DeleteAddedNote note={note} />
       </section>
     </>
   )
@@ -203,7 +237,7 @@ export function StudyNotePage({ keyword }: { keyword: string }) {
       {!isLoading && !error && !note && (
         <EmptyState
           title="학습 노트를 찾을 수 없습니다"
-          description="이 키워드를 추천한 채점 결과나 면접 기록, 또는 이 키워드가 필요한 문제가 지워졌을 수 있습니다."
+          description="이 키워드를 추천한 채점 결과나 면접 기록, 또는 이 키워드가 필요한 문제가 지워졌거나, 직접 추가한 노트를 삭제했을 수 있습니다."
           action={<Button onClick={() => navigate({ name: 'notes' })}>학습 노트 목록</Button>}
         />
       )}

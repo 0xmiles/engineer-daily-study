@@ -103,12 +103,17 @@ function toNote(key: string, recommendations: Recommendation[], needs: QuestionN
   const neededBy = uniqueByQuestion([...needs].sort((left, right) => right.question.createdAt.localeCompare(left.question.createdAt)))
   // Only a recommendation reopens a done note; a new question needing a keyword already studied does not.
   const lastRecommendedAt = newestFirst[0]?.source.recommendedAt ?? null
-  const topics = [...newestFirst.map((recommendation) => recommendation.topic), ...neededBy.map((need) => need.question.topic)]
+  const manual = state?.manual ?? null
+  const topics = [
+    ...newestFirst.map((recommendation) => recommendation.topic),
+    ...neededBy.map((need) => need.question.topic),
+    ...(manual?.topics ?? []),
+  ]
   const doneAt = state?.doneAt ?? null
   return {
     key,
-    // Every note has a recommendation or a question need, so one of the two spells the keyword.
-    keyword: (newestFirst[0] ?? neededBy[0]).keyword.trim(),
+    // Every note has a recommendation, a question need or the user's own entry, so one of them spells the keyword.
+    keyword: (newestFirst[0]?.keyword ?? neededBy[0]?.keyword ?? manual?.keyword ?? '').trim(),
     sources: newestFirst.map((recommendation) => recommendation.source),
     questions: neededBy.map(({ question }) => ({ id: question.id, title: question.title })),
     topics: [...new Set(topics.filter((topic): topic is Topic => topic !== null))],
@@ -117,16 +122,21 @@ function toNote(key: string, recommendations: Recommendation[], needs: QuestionN
     isReopened: doneAt !== null && lastRecommendedAt !== null && doneAt < lastRecommendedAt,
     lastRecommendedAt,
     hasGuide: Boolean(state?.guide),
+    addedAt: manual?.addedAt ?? null,
   }
 }
 
 /**
- * Open notes first, notes recommended again after being done ahead of those, then the most recommended.
- * A gap a grading found comes before a keyword only bank questions name; among those, the one more questions need comes first.
+ * Open notes first, notes recommended again after being done ahead of those, then the keywords the user added, newest first,
+ * then the most recommended. A gap a grading found comes before a keyword only bank questions name; among those,
+ * the one more questions need comes first.
  */
 function compareNotes(left: StudyNote, right: StudyNote): number {
   if (left.isDone !== right.isDone) return left.isDone ? 1 : -1
   if (left.isReopened !== right.isReopened) return left.isReopened ? -1 : 1
+  // An empty string sorts last, so a note the user added comes before one they did not.
+  const addedOrder = (right.addedAt ?? '').localeCompare(left.addedAt ?? '')
+  if (addedOrder !== 0) return addedOrder
   if (left.sources.length !== right.sources.length) return right.sources.length - left.sources.length
   if (left.questions.length !== right.questions.length) return right.questions.length - left.questions.length
   return (right.lastRecommendedAt ?? '').localeCompare(left.lastRecommendedAt ?? '')
@@ -143,13 +153,14 @@ function groupByKey<T extends { keyword: string }>(entries: T[]): Map<string, T[
 }
 
 /**
- * Notes are rebuilt from gradings, interview reports and the bank questions' study topics on every read;
- * only the user's memo, done mark and the written guide are stored.
+ * Notes are rebuilt from gradings, interview reports, the bank questions' study topics and the keywords the user added
+ * on every read; only the user's memo, done mark, own keywords and the written guide are stored.
  */
 export function buildStudyNotes({ attempts, questions, interviews, states }: StudyNoteInputs): StudyNote[] {
   const recommendationsByKey = groupByKey([...attemptRecommendations(attempts, questions), ...interviewRecommendations(interviews)])
   const needsByKey = groupByKey(questionNeeds(questions))
   const statesByKey = new Map(states.map((state) => [state.key, state]))
-  const keys = new Set([...recommendationsByKey.keys(), ...needsByKey.keys()])
+  const addedKeys = states.filter((state) => state.manual).map((state) => state.key)
+  const keys = new Set([...recommendationsByKey.keys(), ...needsByKey.keys(), ...addedKeys])
   return [...keys].map((key) => toNote(key, recommendationsByKey.get(key) ?? [], needsByKey.get(key) ?? [], statesByKey.get(key))).sort(compareNotes)
 }

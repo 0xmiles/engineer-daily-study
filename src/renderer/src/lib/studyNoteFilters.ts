@@ -2,7 +2,7 @@ import type { StudyNote } from '@shared/api'
 import type { Topic } from '@shared/types'
 
 export type StatusFilter = 'todo' | 'done' | 'all'
-export type KindFilter = 'recommended' | 'question'
+export type KindFilter = 'recommended' | 'question' | 'manual'
 
 export interface NoteFilters {
   kind: KindFilter | ''
@@ -10,6 +10,17 @@ export interface NoteFilters {
   topics: Topic[]
   /** Keep only notes whose study material has been written. */
   guideOnly: boolean
+}
+
+/** Everything the notes list remembers while the user opens a note and comes back. */
+export interface NotesView extends NoteFilters {
+  status: StatusFilter
+}
+
+export const DEFAULT_NOTES_VIEW: NotesView = { status: 'todo', kind: '', topics: [], guideOnly: false }
+
+export function isDefaultNotesView(view: NotesView): boolean {
+  return view.status === DEFAULT_NOTES_VIEW.status && view.kind === '' && view.topics.length === 0 && !view.guideOnly
 }
 
 export function matchesStatus(note: StudyNote, status: StatusFilter): boolean {
@@ -20,6 +31,7 @@ export function matchesStatus(note: StudyNote, status: StatusFilter): boolean {
 function matchesKind(note: StudyNote, kind: KindFilter | ''): boolean {
   if (kind === 'recommended') return note.sources.length > 0
   if (kind === 'question') return note.questions.length > 0
+  if (kind === 'manual') return note.addedAt !== null
   return true
 }
 

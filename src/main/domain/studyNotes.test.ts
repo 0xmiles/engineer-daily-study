@@ -20,6 +20,10 @@ function state(keyword: string, doneAt: string | null, memo = ''): StudyNoteStat
   return { key: studyNoteKey(keyword), memo, doneAt, updatedAt: doneAt ?? '2026-10-01T00:00:00.000Z' }
 }
 
+function addedState(keyword: string, topics: string[], addedAt = '2026-10-10T00:00:00.000Z'): StudyNoteState {
+  return { ...state(keyword, null), manual: { keyword, topics, addedAt } }
+}
+
 const questions = [question('q1', 'kafka'), question('q2', 'cache')]
 
 describe('normalizeKeyword', () => {
@@ -117,5 +121,45 @@ describe('buildStudyNotes', () => {
     expect(notes).toHaveLength(1)
     expect(notes[0]).toMatchObject({ keyword: 'mvcc', topics: ['cache', 'kafka'], questions: [{ id: 'q1' }], lastRecommendedAt: '2026-10-01T00:00:00.000Z' })
     expect(notes[0].sources.map((source) => source.id)).toEqual(['a1'])
+  })
+
+  it('makes a note for a keyword the user added even when nothing else names it', () => {
+    const states = [addedState('Outbox CDC (Debezium)', ['kafka', 'distributed-systems']), state('지워진 문제의 키워드', null)]
+    const notes = buildStudyNotes({ attempts: [], questions, interviews: [], states })
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({
+      key: studyNoteKey('Outbox CDC (Debezium)'),
+      keyword: 'Outbox CDC (Debezium)',
+      sources: [],
+      questions: [],
+      topics: ['kafka', 'distributed-systems'],
+      addedAt: '2026-10-10T00:00:00.000Z',
+      isDone: false,
+    })
+  })
+
+  it('merges a keyword the user added with the recommendations and questions that name it', () => {
+    const bank = [question('q1', 'kafka', ['MVCC']), question('q2', 'cache')]
+    const attempts = [gradedAttempt('a1', 'q2', '2026-10-01T00:00:00.000Z', ['mvcc'])]
+    const notes = buildStudyNotes({ attempts, questions: bank, interviews: [], states: [addedState('MVCC', ['mysql-postgresql', 'kafka'])] })
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ keyword: 'mvcc', topics: ['cache', 'kafka', 'mysql-postgresql'], questions: [{ id: 'q1' }], addedAt: '2026-10-10T00:00:00.000Z' })
+    expect(notes[0].sources.map((source) => source.id)).toEqual(['a1'])
+  })
+
+  it('puts the keywords the user added, newest first, right after the reopened notes', () => {
+    const attempts = [
+      gradedAttempt('a1', 'q1', '2026-10-01T00:00:00.000Z', ['recommended', 'reopened']),
+      gradedAttempt('a2', 'q1', '2026-10-04T00:00:00.000Z', ['reopened']),
+    ]
+    const states = [
+      state('reopened', '2026-10-03T00:00:00.000Z'),
+      addedState('older', [], '2026-10-05T00:00:00.000Z'),
+      addedState('newer', [], '2026-10-06T00:00:00.000Z'),
+      { ...addedState('added and done', []), doneAt: '2026-10-11T00:00:00.000Z' },
+    ]
+    const notes = buildStudyNotes({ attempts, questions, interviews: [], states })
+    expect(notes.map((note) => note.keyword)).toEqual(['reopened', 'newer', 'older', 'recommended', 'added and done'])
+    expect(notes.at(-1)).toMatchObject({ isDone: true, isReopened: false })
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StudyNote, StudyNoteSource } from '@shared/api'
-import { matchesFilters, matchesStatus, toggleValue, type NoteFilters } from './studyNoteFilters'
+import { DEFAULT_NOTES_VIEW, isDefaultNotesView, matchesFilters, matchesStatus, toggleValue, type NoteFilters } from './studyNoteFilters'
 
 function note(overrides: Partial<StudyNote>): StudyNote {
   return {
@@ -14,6 +14,7 @@ function note(overrides: Partial<StudyNote>): StudyNote {
     isReopened: false,
     lastRecommendedAt: null,
     hasGuide: false,
+    addedAt: null,
     ...overrides,
   }
 }
@@ -48,6 +49,12 @@ describe('matchesFilters', () => {
     expect(matchesFilters(note({ questions: [{ id: 'q', title: 't' }] }), { ...NO_FILTERS, kind: 'recommended' })).toBe(false)
   })
 
+  it('keeps the notes the user added when asked for that kind', () => {
+    const filters = { ...NO_FILTERS, kind: 'manual' as const }
+    expect(matchesFilters(note({ addedAt: '2026-11-06T00:00:00.000Z' }), filters)).toBe(true)
+    expect(matchesFilters(note({ questions: [{ id: 'q', title: 't' }] }), filters)).toBe(false)
+  })
+
   it('requires every filter to match', () => {
     const filters: NoteFilters = { kind: 'question', topics: ['kafka'], guideOnly: true }
     const base = { questions: [{ id: 'q', title: 't' }], topics: ['kafka'], hasGuide: true }
@@ -71,5 +78,15 @@ describe('toggleValue', () => {
   it('adds a value that is not selected and removes one that is', () => {
     expect(toggleValue(['kafka'], 'cache')).toEqual(['kafka', 'cache'])
     expect(toggleValue(['kafka', 'cache'], 'kafka')).toEqual(['cache'])
+  })
+})
+
+describe('isDefaultNotesView', () => {
+  it('is true only when nothing narrows the list beyond the open notes', () => {
+    expect(isDefaultNotesView(DEFAULT_NOTES_VIEW)).toBe(true)
+    expect(isDefaultNotesView({ ...DEFAULT_NOTES_VIEW, status: 'all' })).toBe(false)
+    expect(isDefaultNotesView({ ...DEFAULT_NOTES_VIEW, kind: 'manual' })).toBe(false)
+    expect(isDefaultNotesView({ ...DEFAULT_NOTES_VIEW, topics: ['kafka'] })).toBe(false)
+    expect(isDefaultNotesView({ ...DEFAULT_NOTES_VIEW, guideOnly: true })).toBe(false)
   })
 })

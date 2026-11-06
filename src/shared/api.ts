@@ -120,6 +120,8 @@ export interface StudyNote {
   /** Null when no grading or interview recommended the keyword. */
   lastRecommendedAt: string | null
   hasGuide: boolean
+  /** The user added the keyword by hand. Null otherwise. */
+  addedAt: string | null
 }
 
 export interface StudyNoteDetail extends StudyNote {
@@ -129,6 +131,11 @@ export interface StudyNoteDetail extends StudyNote {
 export interface StudyNoteChanges {
   memo?: string
   done?: boolean
+}
+
+export interface StudyNoteInput {
+  keyword: string
+  topics: Topic[]
 }
 
 export interface StudyDay {
@@ -221,8 +228,12 @@ export interface DailyStudyApi {
   retryInquiry(attemptId: string, inquiryId: string): Promise<string>
 
   listStudyNotes(): Promise<StudyNote[]>
-  /** Finds the note however the keyword is spelled; null when no grading, interview or bank question names it. */
+  /** Finds the note however the keyword is spelled; null when no grading, interview or bank question names it and the user did not add it. */
   getStudyNote(keyword: string): Promise<StudyNoteDetail | null>
+  /** Adds a keyword by hand. When a note for it already exists, resolves to that note unchanged. */
+  addStudyNote(input: StudyNoteInput): Promise<StudyNote>
+  /** Deletes a note the user added, with its memo and material; only a note nothing else names can be deleted. */
+  deleteStudyNote(key: string): Promise<void>
   updateStudyNote(key: string, changes: StudyNoteChanges): Promise<void>
   /** Writes the note's study material in the background, replacing any earlier one. Resolves to the job id. */
   generateStudyGuide(key: string): Promise<string>
