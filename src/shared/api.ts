@@ -95,18 +95,30 @@ export interface StudyNoteSource {
   recommendedAt: string
 }
 
-/** Study recommendations with the same keyword, gathered from every grading and interview report. */
+/** A bank question that lists the note's keyword among the topics to study for it. */
+export interface StudyNoteQuestion {
+  id: string
+  title: string
+}
+
+/**
+ * One keyword to study, gathered from every grading and interview report that recommended it
+ * and every bank question that needs it.
+ */
 export interface StudyNote {
   key: string
   keyword: string
-  /** Newest first. */
+  /** Recommendations, newest first. Empty when only bank questions need the keyword. */
   sources: StudyNoteSource[]
+  /** Bank questions whose study topics name this keyword, newest first. */
+  questions: StudyNoteQuestion[]
   topics: Topic[]
   memo: string
   isDone: boolean
-  /** Recommended again after the user marked it done. */
+  /** Recommended again after the user marked it done. A new question needing the keyword does not reopen it. */
   isReopened: boolean
-  lastRecommendedAt: string
+  /** Null when no grading or interview recommended the keyword. */
+  lastRecommendedAt: string | null
   hasGuide: boolean
 }
 
@@ -209,7 +221,7 @@ export interface DailyStudyApi {
   retryInquiry(attemptId: string, inquiryId: string): Promise<string>
 
   listStudyNotes(): Promise<StudyNote[]>
-  /** Finds the note however the keyword is spelled; null when no grading or interview recommended it. */
+  /** Finds the note however the keyword is spelled; null when no grading, interview or bank question names it. */
   getStudyNote(keyword: string): Promise<StudyNoteDetail | null>
   updateStudyNote(key: string, changes: StudyNoteChanges): Promise<void>
   /** Writes the note's study material in the background, replacing any earlier one. Resolves to the job id. */

@@ -1,4 +1,4 @@
-import type { Difficulty } from '@shared/types'
+import type { Difficulty, Question } from '@shared/types'
 import type { StudyNote, StudyNoteSource } from '@shared/api'
 import { normalizeStudyGuide, type StudyGuideContent } from '../domain/studyGuide'
 import { runSkill } from '../llm/skillRunner'
@@ -13,8 +13,18 @@ function sourceDifficulty(repositories: Repositories, source: StudyNoteSource): 
   return (attempt && repositories.questions.read(attempt.questionId)?.difficulty) ?? null
 }
 
-/** The tutor sees why the keyword was recommended, so the material starts from the gaps the gradings found. */
+/** How a bank question uses the keyword, so the tutor scopes the note to what solving it takes. */
+function questionPayload(question: Question): object {
+  const { title, format, difficulty, keyIssues } = question
+  return { title, format, difficulty, keyIssues, requiredPoints: question.rubric.required.map((item) => item.point) }
+}
+
+/**
+ * The tutor sees why the keyword was recommended and which bank questions need it,
+ * so the material starts from the gaps the gradings found and reaches as deep as the questions go.
+ */
 function studyGuidePayload(repositories: Repositories, note: StudyNote): object {
+  const questions = note.questions.map(({ id }) => repositories.questions.read(id)).filter((question): question is Question => question !== null)
   return {
     keyword: note.keyword,
     topics: listTopics(repositories)
@@ -26,6 +36,7 @@ function studyGuidePayload(repositories: Repositories, note: StudyNote): object 
       reason: source.reason,
       searchQuery: source.searchQuery,
     })),
+    questions: questions.map(questionPayload),
   }
 }
 

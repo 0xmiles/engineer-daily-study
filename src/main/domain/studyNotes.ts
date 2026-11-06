@@ -78,39 +78,78 @@ function uniqueBySource(recommendations: Recommendation[]): Recommendation[] {
   })
 }
 
-function toNote(key: string, recommendations: Recommendation[], state: StudyNoteState | undefined): StudyNote {
+/** A bank question that names the keyword among the topics to study for it. */
+interface QuestionNeed {
+  keyword: string
+  question: Question
+}
+
+function questionNeeds(questions: Question[]): QuestionNeed[] {
+  return questions.flatMap((question) => question.relatedStudyTopics.map((keyword) => ({ keyword, question })))
+}
+
+// A question that lists the keyword twice in two spellings still needs it once.
+function uniqueByQuestion(needs: QuestionNeed[]): QuestionNeed[] {
+  const seen = new Set<string>()
+  return needs.filter(({ question }) => {
+    if (seen.has(question.id)) return false
+    seen.add(question.id)
+    return true
+  })
+}
+
+function toNote(key: string, recommendations: Recommendation[], needs: QuestionNeed[], state: StudyNoteState | undefined): StudyNote {
   const newestFirst = uniqueBySource([...recommendations].sort((left, right) => right.source.recommendedAt.localeCompare(left.source.recommendedAt)))
-  const lastRecommendedAt = newestFirst[0].source.recommendedAt
+  const neededBy = uniqueByQuestion([...needs].sort((left, right) => right.question.createdAt.localeCompare(left.question.createdAt)))
+  // Only a recommendation reopens a done note; a new question needing a keyword already studied does not.
+  const lastRecommendedAt = newestFirst[0]?.source.recommendedAt ?? null
+  const topics = [...newestFirst.map((recommendation) => recommendation.topic), ...neededBy.map((need) => need.question.topic)]
   const doneAt = state?.doneAt ?? null
   return {
     key,
-    keyword: newestFirst[0].keyword.trim(),
+    // Every note has a recommendation or a question need, so one of the two spells the keyword.
+    keyword: (newestFirst[0] ?? neededBy[0]).keyword.trim(),
     sources: newestFirst.map((recommendation) => recommendation.source),
-    topics: [...new Set(newestFirst.map((recommendation) => recommendation.topic).filter((topic): topic is Topic => topic !== null))],
+    questions: neededBy.map(({ question }) => ({ id: question.id, title: question.title })),
+    topics: [...new Set(topics.filter((topic): topic is Topic => topic !== null))],
     memo: state?.memo ?? '',
-    isDone: doneAt !== null && doneAt >= lastRecommendedAt,
-    isReopened: doneAt !== null && doneAt < lastRecommendedAt,
+    isDone: doneAt !== null && (lastRecommendedAt === null || doneAt >= lastRecommendedAt),
+    isReopened: doneAt !== null && lastRecommendedAt !== null && doneAt < lastRecommendedAt,
     lastRecommendedAt,
     hasGuide: Boolean(state?.guide),
   }
 }
 
-/** Open notes first, notes recommended again after being done ahead of those, then the most recommended. */
+/**
+ * Open notes first, notes recommended again after being done ahead of those, then the most recommended.
+ * A gap a grading found comes before a keyword only bank questions name; among those, the one more questions need comes first.
+ */
 function compareNotes(left: StudyNote, right: StudyNote): number {
   if (left.isDone !== right.isDone) return left.isDone ? 1 : -1
   if (left.isReopened !== right.isReopened) return left.isReopened ? -1 : 1
   if (left.sources.length !== right.sources.length) return right.sources.length - left.sources.length
-  return right.lastRecommendedAt.localeCompare(left.lastRecommendedAt)
+  if (left.questions.length !== right.questions.length) return right.questions.length - left.questions.length
+  return (right.lastRecommendedAt ?? '').localeCompare(left.lastRecommendedAt ?? '')
 }
 
-/** Notes are rebuilt from gradings and interview reports on every read; only the user's memo and done mark are stored. */
-export function buildStudyNotes({ attempts, questions, interviews, states }: StudyNoteInputs): StudyNote[] {
-  const groups = new Map<string, Recommendation[]>()
-  for (const recommendation of [...attemptRecommendations(attempts, questions), ...interviewRecommendations(interviews)]) {
-    if (!recommendation.keyword.trim()) continue
-    const key = studyNoteKey(recommendation.keyword)
-    groups.set(key, [...(groups.get(key) ?? []), recommendation])
+function groupByKey<T extends { keyword: string }>(entries: T[]): Map<string, T[]> {
+  const groups = new Map<string, T[]>()
+  for (const entry of entries) {
+    if (!entry.keyword.trim()) continue
+    const key = studyNoteKey(entry.keyword)
+    groups.set(key, [...(groups.get(key) ?? []), entry])
   }
+  return groups
+}
+
+/**
+ * Notes are rebuilt from gradings, interview reports and the bank questions' study topics on every read;
+ * only the user's memo, done mark and the written guide are stored.
+ */
+export function buildStudyNotes({ attempts, questions, interviews, states }: StudyNoteInputs): StudyNote[] {
+  const recommendationsByKey = groupByKey([...attemptRecommendations(attempts, questions), ...interviewRecommendations(interviews)])
+  const needsByKey = groupByKey(questionNeeds(questions))
   const statesByKey = new Map(states.map((state) => [state.key, state]))
-  return [...groups.entries()].map(([key, recommendations]) => toNote(key, recommendations, statesByKey.get(key))).sort(compareNotes)
+  const keys = new Set([...recommendationsByKey.keys(), ...needsByKey.keys()])
+  return [...keys].map((key) => toNote(key, recommendationsByKey.get(key) ?? [], needsByKey.get(key) ?? [], statesByKey.get(key))).sort(compareNotes)
 }

@@ -83,6 +83,31 @@ describe('generateStudyGuide', () => {
     expect(getStudyNote(context.repositories(), note.keyword)).toMatchObject({ isDone: true, guide: { summary: GUIDE.summary } })
   })
 
+  it('writes the guide for a keyword bank questions need from how those questions use it', async () => {
+    runSkill.mockReset().mockResolvedValue(GUIDE)
+    const context = createTestAppContext()
+    const content = questionContentFor({ format: 'concept', category: 'principle', topic: 'kafka', difficulty: 'junior' }, 'ISR이 줄어들 때 일어나는 일')
+    const rubric = { ...content.rubric, required: [{ point: 'min.insync.replicas 와 acks=all 의 관계', explanation: '' }] }
+    context.repositories().saveQuestion({
+      ...content, rubric, keyIssues: ['쓰기 거부 조건'], modelAnswer: '모범 답안', relatedStudyTopics: ['Kafka ISR'],
+      id: 'q-2', source: 'seed', reviewStatus: 'reviewed', createdAt: '2026-10-01T00:00:00Z', variantOf: null,
+    } as Question)
+    const note = getStudyNote(context.repositories(), 'kafka isr')!
+    expect(note).toMatchObject({ keyword: 'Kafka ISR', sources: [], questions: [{ id: 'q-2', title: 'ISR이 줄어들 때 일어나는 일' }], hasGuide: false })
+
+    generateStudyGuide(context, note.key)
+    await waitForJobs(context)
+
+    const payload = runSkill.mock.calls[0][0].payload
+    expect(payload).toEqual({
+      keyword: 'Kafka ISR',
+      topics: [expect.objectContaining({ value: 'kafka' })],
+      recommendations: [],
+      questions: [{ title: 'ISR이 줄어들 때 일어나는 일', format: 'concept', difficulty: 'junior', keyIssues: ['쓰기 거부 조건'], requiredPoints: ['min.insync.replicas 와 acks=all 의 관계'] }],
+    })
+    expect(getStudyNote(context.repositories(), note.keyword)).toMatchObject({ hasGuide: true })
+  })
+
   it('finds nothing for a keyword no grading recommended', () => {
     const context = createTestAppContext()
     expect(getStudyNote(context.repositories(), 'Redis')).toBeNull()

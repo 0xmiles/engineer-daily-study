@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Job, SelfCheckItem, StudyGuide } from '@shared/types'
-import type { StudyNoteDetail } from '@shared/api'
+import type { StudyNoteDetail, StudyNoteQuestion } from '@shared/api'
 import { api, formatDateTime } from '../lib/api'
 import { useAsyncData } from '../state/useAsyncData'
 import { useJobs } from '../state/jobs'
@@ -13,7 +13,7 @@ import { formatDuration, useNow } from '../components/InterviewShared'
 import { Markdown } from '../components/Markdown'
 import { PageContainer, PageHeader } from '../components/PageHeader'
 import { Badge } from '../components/QuestionBadges'
-import { DoneToggle, EarlierSources, MemoField, SearchLinks, SourceLink } from '../components/StudyNoteParts'
+import { DoneToggle, EarlierSources, MemoField, QuestionLink, SearchLinks, SourceLink } from '../components/StudyNoteParts'
 
 const RUNNER_LABELS = { claude: 'Claude', codex: 'Codex' }
 
@@ -139,22 +139,46 @@ function GuideArea({ note }: { note: StudyNoteDetail }) {
   )
 }
 
+function noteDescription(note: StudyNoteDetail): string {
+  const parts = [
+    note.lastRecommendedAt && `추천 ${note.sources.length}회 · 마지막 추천 ${formatDateTime(note.lastRecommendedAt)}`,
+    note.questions.length > 0 && `문제 ${note.questions.length}개에 필요한 개념`,
+  ]
+  return parts.filter(Boolean).join(' · ')
+}
+
+function NeededByQuestions({ questions }: { questions: StudyNoteQuestion[] }) {
+  return (
+    <section className="card p-5">
+      <p className="text-xs font-semibold text-accent-ink">이 개념이 필요한 문제</p>
+      <ul className="mt-2 space-y-1.5 text-sm">
+        {questions.map((question) => <li key={question.id}><QuestionLink question={question} /></li>)}
+      </ul>
+    </section>
+  )
+}
+
 function NoteContent({ note }: { note: StudyNoteDetail }) {
   const { label: topicLabel } = useTopics()
   const [latestSource, ...earlierSources] = note.sources
   return (
     <>
-      <PageHeader title={note.keyword} description={`추천 ${note.sources.length}회 · 마지막 추천 ${formatDateTime(note.lastRecommendedAt)}`} actions={<DoneToggle note={note} />} />
+      <PageHeader title={note.keyword} description={noteDescription(note)} actions={<DoneToggle note={note} />} />
       <div className="-mt-5 mb-6 flex flex-wrap gap-1.5">
         {note.isReopened && <Badge className="bg-warn-soft text-warn">다시 추천됨</Badge>}
         {note.topics.map((topic) => <Badge key={topic}>{topicLabel(topic)}</Badge>)}
       </div>
-      <section className="card border-l-4 border-l-accent p-5">
-        <p className="text-xs font-semibold text-accent-ink">추천 이유</p>
-        <p className="mt-1 text-sm leading-6">{latestSource.reason}</p>
-        <SourceLink source={latestSource} />
-        <EarlierSources sources={earlierSources} />
-      </section>
+      <div className="space-y-4">
+        {latestSource && (
+          <section className="card border-l-4 border-l-accent p-5">
+            <p className="text-xs font-semibold text-accent-ink">추천 이유</p>
+            <p className="mt-1 text-sm leading-6">{latestSource.reason}</p>
+            <SourceLink source={latestSource} />
+            <EarlierSources sources={earlierSources} />
+          </section>
+        )}
+        {note.questions.length > 0 && <NeededByQuestions questions={note.questions} />}
+      </div>
       <div className="mt-6"><GuideArea note={note} /></div>
       <section className="card mt-6 p-5">
         <p className="mb-3 font-semibold">내 메모</p>
@@ -179,7 +203,7 @@ export function StudyNotePage({ keyword }: { keyword: string }) {
       {!isLoading && !error && !note && (
         <EmptyState
           title="학습 노트를 찾을 수 없습니다"
-          description="이 키워드를 추천한 채점 결과나 면접 기록이 지워졌을 수 있습니다."
+          description="이 키워드를 추천한 채점 결과나 면접 기록, 또는 이 키워드가 필요한 문제가 지워졌을 수 있습니다."
           action={<Button onClick={() => navigate({ name: 'notes' })}>학습 노트 목록</Button>}
         />
       )}

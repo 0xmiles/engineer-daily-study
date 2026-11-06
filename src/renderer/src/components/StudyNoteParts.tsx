@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import type { StudyNote, StudyNoteSource } from '@shared/api'
+import type { StudyNote, StudyNoteQuestion, StudyNoteSource } from '@shared/api'
 import { api, formatDateTime } from '../lib/api'
 import { useNavigate } from '../state/navigation'
 import { useRequest } from '../state/useRequest'
@@ -23,6 +23,27 @@ export function SourceLink({ source }: { source: StudyNoteSource }) {
   return (
     <p className="mt-1 text-xs text-ink-muted">
       <button className="font-medium text-accent-ink hover:underline" onClick={open}>{source.title}</button> · {formatDateTime(source.recommendedAt)}
+    </p>
+  )
+}
+
+/** Opens a bank question that needs the note's keyword; like SourceLink, the click must not open the note card. */
+export function QuestionLink({ question }: { question: StudyNoteQuestion }) {
+  const navigate = useNavigate()
+  const open = (event: MouseEvent): void => {
+    event.stopPropagation()
+    navigate({ name: 'question', questionId: question.id })
+  }
+  return <button className="text-left font-medium text-accent-ink hover:underline" onClick={open}>{question.title}</button>
+}
+
+/** The card's one-line version of the questions that need the keyword: the newest one, then how many more. */
+export function NeededByLine({ questions }: { questions: StudyNoteQuestion[] }) {
+  if (questions.length === 0) return null
+  const [newest, ...others] = questions
+  return (
+    <p className="mt-1 text-xs text-ink-muted">
+      필요한 문제: <QuestionLink question={newest} />{others.length > 0 && ` 외 ${others.length}개`}
     </p>
   )
 }

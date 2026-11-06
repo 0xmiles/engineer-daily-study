@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Attempt, ConversationInterview, Question, StudyNoteState } from '@shared/types'
 import { buildStudyNotes, normalizeKeyword, studyNoteKey } from './studyNotes'
 
-function question(id: string, topic: string): Question {
-  return { id, topic, title: `문제 ${id}` } as Question
+function question(id: string, topic: string, relatedStudyTopics: string[] = [], createdAt = '2026-09-01T00:00:00.000Z'): Question {
+  return { id, topic, title: `문제 ${id}`, createdAt, relatedStudyTopics } as Question
 }
 
 function gradedAttempt(id: string, questionId: string, gradedAt: string, keywords: string[]): Attempt {
@@ -78,5 +78,44 @@ describe('buildStudyNotes', () => {
     const states = [state('done', '2026-10-03T00:00:00.000Z'), state('reopened', '2026-10-03T00:00:00.000Z')]
     const notes = buildStudyNotes({ attempts, questions, interviews: [], states })
     expect(notes.map((note) => note.keyword)).toEqual(['reopened', 'twice', 'once', 'done'])
+  })
+
+  it('makes a note for each study topic the bank questions name, listing the questions that need it', () => {
+    const bank = [
+      question('q1', 'kafka', ['Kafka 리밸런싱', 'ISR'], '2026-09-01T00:00:00.000Z'),
+      question('q2', 'cache', ['kafka-리밸런싱', 'Redis 축출'], '2026-09-02T00:00:00.000Z'),
+    ]
+    const notes = buildStudyNotes({ attempts: [], questions: bank, interviews: [], states: [] })
+    expect(notes.map((note) => note.keyword)).toEqual(['kafka-리밸런싱', 'ISR', 'Redis 축출'])
+    expect(notes[0]).toMatchObject({
+      key: studyNoteKey('Kafka 리밸런싱'),
+      sources: [],
+      questions: [{ id: 'q2', title: '문제 q2' }, { id: 'q1', title: '문제 q1' }],
+      topics: ['cache', 'kafka'],
+      lastRecommendedAt: null,
+      isDone: false,
+    })
+  })
+
+  it('keeps a keyword only questions need done even when a new question needs it later', () => {
+    const bank = [question('q1', 'kafka', ['ISR'], '2026-09-01T00:00:00.000Z'), question('q3', 'kafka', ['ISR'], '2026-10-01T00:00:00.000Z')]
+    const [note] = buildStudyNotes({ attempts: [], questions: bank, interviews: [], states: [state('ISR', '2026-09-05T00:00:00.000Z')] })
+    expect(note).toMatchObject({ isDone: true, isReopened: false })
+  })
+
+  it('lists recommended keywords first, then the keywords more questions need', () => {
+    const bank = [question('q1', 'kafka', ['ISR', 'acks']), question('q2', 'cache', ['acks'])]
+    const attempts = [gradedAttempt('a1', 'q1', '2026-08-01T00:00:00.000Z', ['MVCC'])]
+    const notes = buildStudyNotes({ attempts, questions: bank, interviews: [], states: [] })
+    expect(notes.map((note) => note.keyword)).toEqual(['MVCC', 'acks', 'ISR'])
+  })
+
+  it('puts a recommendation and a question need with the same keyword into one note', () => {
+    const bank = [question('q1', 'kafka', ['MVCC']), question('q2', 'cache')]
+    const attempts = [gradedAttempt('a1', 'q2', '2026-10-01T00:00:00.000Z', ['mvcc'])]
+    const notes = buildStudyNotes({ attempts, questions: bank, interviews: [], states: [] })
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ keyword: 'mvcc', topics: ['cache', 'kafka'], questions: [{ id: 'q1' }], lastRecommendedAt: '2026-10-01T00:00:00.000Z' })
+    expect(notes[0].sources.map((source) => source.id)).toEqual(['a1'])
   })
 })

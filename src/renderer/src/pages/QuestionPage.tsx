@@ -43,8 +43,7 @@ export function QuestionPage({ questionId }: { questionId: string }) {
           <Button variant="secondary" isLoading={pendingAction === 'review'} onClick={() => void run('review', () => api.setReviewStatus(question.id, isReviewed ? 'unreviewed' : 'reviewed'))}>
             {isReviewed ? '검수 취소' : '검수 완료로 표시'}
           </Button>
-          <Button variant="danger" isLoading={pendingAction === 'delete'} onClick={() => setIsDeleteConfirmOpen(true)}>삭제</Button>
-          <Button isLoading={pendingAction === 'solve'} onClick={() => void run('solve', async () => navigate({ name: 'attempt', attemptId: await api.startAttempt(question.id, 'practice') }))}>이 문제 풀기</Button>
+          <Button variant="danger" isLoading={pendingAction === 'delete'} onClick={() => setIsDeleteConfirmOpen(true)}>삭제</Button>          <Button isLoading={pendingAction === 'solve'} onClick={() => void run('solve', async () => navigate({ name: 'attempt', attemptId: await api.startAttempt(question.id, 'practice') }))}>이 문제 풀기</Button>
         </div>
       </div>
       <div className="card p-6">
@@ -59,6 +58,18 @@ export function QuestionPage({ questionId }: { questionId: string }) {
         <summary className="cursor-pointer font-semibold">모범 답안 보기 (스포일러 주의)</summary>
         <div className="mt-4"><Markdown text={question.modelAnswer} /></div>
       </details>
+      {question.relatedStudyTopics.length > 0 && (
+        <details className="card mt-4 p-5">
+          <summary className="cursor-pointer font-semibold">이 문제에 필요한 학습 노트 (스포일러 주의)</summary>
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {question.relatedStudyTopics.map((keyword) => (
+              <button key={keyword} className="rounded-full border border-line px-3 py-1 text-sm hover:border-accent/40 hover:text-accent-ink" onClick={() => navigate({ name: 'studyNote', keyword })}>
+                {keyword} →
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
       <section className="card mt-4 p-5">
         <p className="mb-3 font-semibold">문제 품질 피드백</p>
         <QuestionFeedbackForm questionId={question.id} />
